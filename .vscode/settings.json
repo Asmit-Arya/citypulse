@@ -1,0 +1,25 @@
+{
+    "C_Cpp.errorSquiggles": "disabled",
+    "editor.quickSuggestions": {
+        "comments": "off",
+        "strings": "off",
+        "other": "off"
+    },
+    "editor.suggestOnTriggerCharacters": false,
+    "editor.inlineSuggest.enabled": false,
+    "editor.parameterHints.enabled": false,
+    "editor.acceptSuggestionOnCommitCharacter": false,
+    "editor.tabCompletion": "off",
+    "editor.wordBasedSuggestions": "off",
+    "editor.snippetSuggestions": "none",
+    "editor.hover.enabled": "off",
+    "editor.lightbulb.enabled": "off",
+    "editor.codeLens": false,
+    "editor.formatOnType": false,
+    "editor.formatOnPaste": false,
+    "editor.codeActionsOnSave": {},
+    "github.copilot.enable": false,
+    "github.copilot.editor.enableAutoCompletions": false,
+    "code-runner.runInTerminal": true,
+    "code-runner.preserveFocus": false
+}
