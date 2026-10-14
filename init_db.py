@@ -1,11 +1,9 @@
-# File: init_db.py
-# Purpose: Initialize SQLite tables and populate seed data
-
 import sqlite3
 
-def setup_database():
+def initialize_database():
     conn = sqlite3.connect("citypulse.db")
     cursor = conn.cursor()
+    cursor.execute("PRAGMA foreign_keys = ON;")
 
     # 1. Businesses Table
     cursor.execute("""
@@ -20,7 +18,7 @@ def setup_database():
     );
     """)
 
-    # 2. Services Table (with EMA duration tracking)
+    # 2. Services Table
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS services (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -28,11 +26,11 @@ def setup_database():
         name TEXT NOT NULL,
         current_estimated_duration REAL NOT NULL,
         total_completed_count INTEGER NOT NULL DEFAULT 0,
-        FOREIGN KEY (business_id) REFERENCES businesses (id)
+        FOREIGN KEY (business_id) REFERENCES businesses (id) ON DELETE CASCADE
     );
     """)
 
-    # 3. Queue Tickets Table (Tracks walk-ins vs app users and timestamps)
+    # 3. Queue Tickets Table
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS queue_tickets (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -46,43 +44,44 @@ def setup_database():
         started_at TEXT,
         completed_at TEXT,
         created_at TEXT NOT NULL,
-        FOREIGN KEY (business_id) REFERENCES businesses (id),
-        FOREIGN KEY (service_id) REFERENCES services (id)
+        FOREIGN KEY (business_id) REFERENCES businesses (id) ON DELETE CASCADE,
+        FOREIGN KEY (service_id) REFERENCES services (id) ON DELETE CASCADE
     );
     """)
 
-    # Insert default business if missing
-    cursor.execute("SELECT COUNT(*) FROM businesses")
+    # Populate seed data if table is empty
+    cursor.execute("SELECT COUNT(*) FROM businesses;")
     if cursor.fetchone()[0] == 0:
         cursor.execute("""
-        INSERT INTO businesses (name, category, city, status, current_queue, active_counters)
-        VALUES ('Urban Cut Studio', 'Salon', 'Raipur', 'open', 2, 1)
+            INSERT INTO businesses (name, category, city, status, current_queue, active_counters)
+            VALUES 
+            ('Urban Cut Studio', 'Salon', 'Raipur', 'open', 2, 1),
+            ('Apex Dental Clinic', 'Healthcare', 'Raipur', 'open', 1, 1),
+            ('Metro Auto Workshop', 'Automotive', 'Bhilai', 'busy', 3, 2);
         """)
-        biz_id = cursor.lastrowid
-
-        # Insert default services with initial estimated durations
+        
+        # Add services for Urban Cut Studio (Business ID 1)
         cursor.execute("""
-        INSERT INTO services (business_id, name, current_estimated_duration, total_completed_count)
-        VALUES 
-        (?, 'Standard Haircut', 20.0, 5),
-        (?, 'Beard Trim & Lineup', 10.0, 5),
-        (?, 'Hair Color & Styling', 45.0, 2)
-        """, (biz_id, biz_id, biz_id))
+            INSERT INTO services (business_id, name, current_estimated_duration, total_completed_count)
+            VALUES 
+            (1, 'Standard Haircut', 20.0, 5),
+            (1, 'Beard Trim & Lineup', 10.0, 5),
+            (1, 'Hair Color & Styling', 45.0, 2);
+        """)
 
-        # Insert sample waiting tickets
+        # Add initial queue tickets for Business ID 1
         cursor.execute("""
-        INSERT INTO queue_tickets (business_id, service_id, customer_name, is_walkin, status, created_at)
-        VALUES 
-        (?, 1, 'Rahul Sharma', 0, 'waiting', datetime('now')),
-        (?, 2, 'Walk-in Guest', 1, 'waiting', datetime('now'))
-        """, (biz_id, biz_id))
-
-        print("Database initialized with seed business, services, and queue tickets!")
+            INSERT INTO queue_tickets (business_id, service_id, customer_name, is_walkin, status, created_at)
+            VALUES 
+            (1, 1, 'Rahul Sharma', 0, 'waiting', datetime('now', '-10 minutes')),
+            (1, 2, 'Walk-in Guest', 1, 'waiting', datetime('now', '-5 minutes'));
+        """)
+        conn.commit()
+        print("Database schema and seed data created!")
     else:
-        print("Database already contains data.")
+        print("Database already populated.")
 
-    conn.commit()
     conn.close()
 
 if __name__ == "__main__":
-    setup_database()
+    initialize_database()
