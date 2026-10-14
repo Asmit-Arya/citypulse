@@ -1,23 +1,44 @@
-// File: static/js/api.js
-// Purpose: Dynamic Merchant Console Controller & Asynchronous Network Bridge
+/*
+=============================================================================
+FILE: static/js/api.js
+TIER: Client-Side Controller & Asynchronous Network Bridge
+-----------------------------------------------------------------------------
+PURPOSE:
+Acts as the intermediary between browser Document Object Model (DOM) events
+and Flask REST API routes. Enables single-page application (SPA) functionality
+by sending background network requests using the Fetch API without full page reloads.
 
-const CURRENT_BUSINESS_ID = 1; // Default business ID for testing
+KEY OPERATIONS:
+1. Polling: Continuously synchronizes merchant view every 10 seconds.
+2. State Transition: Dispatches PUT requests when seating or completing patrons.
+3. DOM Mutation: Updates the 'Active in Chair' card, waiting list, and wait badges.
+=============================================================================
+*/
 
-// --- 1. Network Communication Functions ---
+// Configuration: Default establishment identifier for testing
+const CURRENT_BUSINESS_ID = 1;
 
-// Fetch the current queue and active customer from Flask
+// -----------------------------------------------------------------------------
+// 1. Asynchronous Network Helpers (HTTP Dispatchers)
+// -----------------------------------------------------------------------------
+
+/**
+ * Retrieves the current queue state, active patron, and wait metrics from Flask.
+ */
 async function fetchQueueState(businessId) {
     try {
         const response = await fetch(`/api/businesses/${businessId}/queue`);
-        if (!response.ok) throw new Error("Network response failed");
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
         return await response.json();
     } catch (err) {
-        console.error("Failed to load queue data:", err);
+        console.error("[CityPulse Network Error] Failed to fetch queue state:", err);
         return null;
     }
 }
 
-// Send an in-person walk-in customer to Flask
+/**
+ * Dispatches an asynchronous POST request to enroll an in-person walk-in customer.
+ */
 async function requestAddWalkIn(businessId, serviceId, customerName) {
     try {
         const response = await fetch("/api/walkin", {
@@ -31,37 +52,46 @@ async function requestAddWalkIn(businessId, serviceId, customerName) {
         });
         return await response.json();
     } catch (err) {
-        console.error("Walk-in request failed:", err);
+        console.error("[CityPulse Network Error] Failed to register walk-in:", err);
     }
 }
 
-// Seat the next customer in line
+/**
+ * Dispatches an asynchronous PUT request to seat the next patron in the active chair.
+ */
 async function requestSeatNext(ticketId) {
     try {
         const response = await fetch(`/api/queue/${ticketId}/start`, { method: "PUT" });
         return await response.json();
     } catch (err) {
-        console.error("Seat customer failed:", err);
+        console.error("[CityPulse Network Error] Failed to seat patron:", err);
     }
 }
 
-// Mark the service finished (triggers the EMA calibration calculation)
+/**
+ * Dispatches an asynchronous PUT request to mark a service complete and trigger EMA.
+ */
 async function requestCompleteService(ticketId) {
     try {
         const response = await fetch(`/api/queue/${ticketId}/complete`, { method: "PUT" });
         return await response.json();
     } catch (err) {
-        console.error("Complete service failed:", err);
+        console.error("[CityPulse Network Error] Failed to complete service:", err);
     }
 }
 
-// --- 2. Dynamic Screen Rendering ---
+// -----------------------------------------------------------------------------
+// 2. Dynamic DOM Rendering (Screen Mutation)
+// -----------------------------------------------------------------------------
 
+/**
+ * Renders the live state of the queue directly into HTML elements without page refresh.
+ */
 async function refreshMerchantConsole() {
     const data = await fetchQueueState(CURRENT_BUSINESS_ID);
     if (!data) return;
 
-    // A. Update the "Active in Chair" Card
+    // --- Sub-View A: Active Patron in Chair ---
     const chairContainer = document.getElementById("activeChairContainer");
     if (chairContainer) {
         if (data.active_patron) {
@@ -87,7 +117,7 @@ async function refreshMerchantConsole() {
         }
     }
 
-    // B. Update the Upcoming Queue List
+    // --- Sub-View B: Upcoming Queue Patron List ---
     const queueList = document.getElementById("merchantQueueList");
     if (queueList) {
         queueList.innerHTML = "";
@@ -99,6 +129,7 @@ async function refreshMerchantConsole() {
                     ? `<span class="badge bg-secondary ms-2">Walk-In</span>` 
                     : `<span class="badge bg-info text-dark ms-2">App User</span>`;
 
+                // Only the person at the head of the line (#1) can be seated, and only if chair is vacant
                 const canSeat = idx === 0 && !data.active_patron;
                 const seatButton = canSeat 
                     ? `<button class="btn btn-sm btn-success ms-auto" onclick="handleSeatNextClick(${ticket.id})">Seat Next</button>` 
@@ -117,14 +148,16 @@ async function refreshMerchantConsole() {
         }
     }
 
-    // C. Update Dynamic Wait Interval Badge
+    // --- Sub-View C: Real-Time Dynamic Wait Interval Badge ---
     const waitBadge = document.getElementById("dynamicWaitBadge");
     if (waitBadge && data.wait_stats) {
         waitBadge.innerText = data.wait_stats.display;
     }
 }
 
-// --- 3. Click Handlers and Form Listeners ---
+// -----------------------------------------------------------------------------
+// 3. User Interaction Event Handlers
+// -----------------------------------------------------------------------------
 
 window.handleSeatNextClick = async function(ticketId) {
     await requestSeatNext(ticketId);
@@ -139,30 +172,27 @@ window.handleCompleteServiceClick = async function(ticketId) {
     await refreshMerchantConsole();
 };
 
-// Wire up the Add Walk-In modal submission
+// -----------------------------------------------------------------------------
+// 4. Initialization & Polling Cycle
+// -----------------------------------------------------------------------------
 document.addEventListener("DOMContentLoaded", () => {
     const walkInForm = document.getElementById("walkInForm");
     if (walkInForm) {
         walkInForm.addEventListener("submit", async (e) => {
-            e.preventDefault();
+            e.preventDefault(); // Stop default browser full-page form submission
             const name = document.getElementById("walkInCustomerName").value.trim();
             const serviceId = document.getElementById("walkInServiceSelect").value;
 
             await requestAddWalkIn(CURRENT_BUSINESS_ID, serviceId, name);
 
-            // Close modal if Bootstrap modal is present
-            const modalEl = document.getElementById("addWalkInModal");
-            if (modalEl && typeof bootstrap !== "undefined") {
-                const modalInstance = bootstrap.Modal.getInstance(modalEl);
-                if (modalInstance) modalInstance.hide();
-            }
             walkInForm.reset();
-
             await refreshMerchantConsole();
         });
     }
 
-    // Initial render and poll every 10 seconds for live updates
+    // Initial load on page startup
     refreshMerchantConsole();
+
+    // Poll the Flask backend every 10,000 milliseconds (10 seconds)
     setInterval(refreshMerchantConsole, 10000);
 });

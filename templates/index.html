@@ -1,38 +1,59 @@
+<!--
+=============================================================================
+FILE: templates/index.html
+TIER: Presentation Structure Layer (HTML5 & Bootstrap 5)
+-----------------------------------------------------------------------------
+PURPOSE:
+Provides the responsive semantic layout for the CityPulse Merchant Console.
+Contains dedicated UI containers for the live operational status, active
+workstation card, walk-in registration form, and dynamic waiting list.
+
+FRAMEWORKS & SCRIPTS LOADED:
+1. Bootstrap 5 CSS: CDN-based responsive 12-column grid and utility styling.
+2. Bootstrap 5 JS Bundle: Modal dialogues and interactive dropdown components.
+3. static/js/api.js: Custom asynchronous controller script.
+=============================================================================
+-->
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CityPulse - Merchant Operations & Live Console</title>
-    <!-- Bootstrap 5 CSS -->
+    <!-- Bootstrap 5 CSS CDN -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
 <body class="bg-light">
 
-    <!-- Top Navigation Bar -->
-    <nav class="navbar navbar-dark bg-dark mb-4">
+    <!-- Top Navigation Header -->
+    <nav class="navbar navbar-dark bg-dark mb-4 shadow-sm">
         <div class="container">
             <span class="navbar-brand fw-bold">CityPulse Merchant Console</span>
+            <!-- Real-time dynamic wait time badge updated by api.js -->
             <span class="badge bg-primary px-3 py-2 fs-6" id="dynamicWaitBadge">Loading wait...</span>
         </div>
     </nav>
 
+    <!-- Main Operational Workspace Grid -->
     <div class="container">
         <div class="row">
             
-            <!-- Left Column: Active in Chair & Walk-In Form -->
+            <!-- Left Column: Active Station & Walk-In Management -->
             <div class="col-md-5 mb-4">
                 <h5 class="fw-bold text-secondary">Active Workstation</h5>
+                
+                <!-- Target container dynamically populated with the active chair card -->
                 <div id="activeChairContainer">
-                    <!-- Populated dynamically by api.js -->
+                    <!-- Injected by refreshMerchantConsole() in api.js -->
                 </div>
 
-                <!-- Add Walk-In Card -->
-                <div class="card p-3 shadow-sm border-0 mt-3">
+                <!-- Walk-In Customer Registration Form -->
+                <div class="card p-3 shadow-sm border-0 mt-3 bg-white">
                     <h6 class="fw-bold mb-2">Register Walk-in Customer</h6>
                     <form id="walkInForm">
                         <div class="mb-2">
-                            <input type="text" id="walkInCustomerName" class="form-control form-control-sm" placeholder="Customer Name (e.g. Amit)" required>
+                            <input type="text" id="walkInCustomerName" class="form-control form-control-sm" placeholder="Customer Name (e.g., Amit)" required>
                         </div>
                         <div class="mb-3">
                             <select id="walkInServiceSelect" class="form-select form-select-sm">
@@ -46,15 +67,17 @@
                 </div>
             </div>
 
-            <!-- Right Column: Live Waiting Queue -->
+            <!-- Right Column: Live Waiting Queue List -->
             <div class="col-md-7">
                 <div class="d-flex justify-content-between align-items-center mb-2">
                     <h5 class="fw-bold text-secondary mb-0">Upcoming Patrons</h5>
                     <small class="text-muted">Auto-refreshes every 10s</small>
                 </div>
+                
+                <!-- Card Container for Waiting Queue Items -->
                 <div class="card shadow-sm border-0">
                     <ul class="list-group list-group-flush" id="merchantQueueList">
-                        <!-- Populated dynamically by api.js -->
+                        <!-- Injected by refreshMerchantConsole() in api.js -->
                     </ul>
                 </div>
             </div>
@@ -62,7 +85,7 @@
         </div>
     </div>
 
-    <!-- Scripts: Bootstrap first, then your api.js bridge -->
+    <!-- Script Import Execution Order: Bootstrap first, then custom API bridge -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="/static/js/api.js"></script>
 </body>

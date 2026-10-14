@@ -1,32 +1,61 @@
-# File: app.py
-# Purpose: Core Flask Server with Queue Lifecycle & Calibration Hooks
+"""
+=============================================================================
+FILE: app.py
+TIER: Application Server & REST API Routing Layer
+-----------------------------------------------------------------------------
+PURPOSE:
+Coordinates HTTP network traffic, serves presentation templates, executes
+parameterized database transactions against SQLite, and routes queue transitions.
+
+ARCHITECTURAL PRINCIPLES:
+1. Stateless REST Design:
+   Every incoming HTTP request encapsulates all parameters required to process
+   the transaction, returning standardized HTTP status codes (200, 201, 400, 404).
+2. SQL Injection Prevention:
+   All queries utilize parameterized placeholders (?) rather than string interpolation,
+   neutralizing arbitrary SQL execution attacks.
+3. Queue Lifecycle State Machine:
+   Tickets progress: 'waiting' -> 'in_service' -> 'completed'.
+=============================================================================
+"""
 
 import sqlite3
 from datetime import datetime
 from flask import Flask, render_template, request, jsonify
 from calibration import update_service_ema, calculate_dynamic_queue_wait
-from ai_service import get_ai_ticket_modifier
+from ai_service import get_ai_ticket_modifier, estimate_wait_with_ai
 
+# Initialize the Flask WSGI application instance
 app = Flask(__name__)
 
 def get_db():
+    """Provides a connection handle to the relational persistence layer."""
     conn = sqlite3.connect("citypulse.db")
     conn.row_factory = sqlite3.Row
     return conn
 
-# --- 1. Home Page Route ---
+# -----------------------------------------------------------------------------
+# ROUTE 1: Presentation Root
+# -----------------------------------------------------------------------------
 @app.route("/")
 def home():
+    """Renders the single-page HTML interface from the templates folder."""
     return render_template("index.html")
 
-# --- 2. Merchant Queue Inspection Endpoint ---
+# -----------------------------------------------------------------------------
+# ROUTE 2: Merchant Queue Inspection API
+# -----------------------------------------------------------------------------
 @app.route("/api/businesses/<int:business_id>/queue", methods=["GET"])
 def get_merchant_queue(business_id):
+    """
+    Returns the real-time operational state of an establishment, including
+    the patron currently in the chair, the waiting queue, and calibrated wait times.
+    """
     conn = get_db()
     cursor = conn.cursor()
 
     try:
-        # Retrieve the patron currently in the chair
+        # Fetch the active customer currently receiving service
         cursor.execute("""
             SELECT q.*, s.name as service_name, s.current_estimated_duration
             FROM queue_tickets q
@@ -37,7 +66,7 @@ def get_merchant_queue(business_id):
         active_row = cursor.fetchone()
         active_patron = dict(active_row) if active_row else None
 
-        # Retrieve all waiting customers in order of arrival
+        # Fetch all waiting tickets ordered by arrival time (FIFO - First In, First Out)
         cursor.execute("""
             SELECT q.*, s.name as service_name, s.current_estimated_duration
             FROM queue_tickets q
@@ -48,13 +77,12 @@ def get_merchant_queue(business_id):
         waiting_rows = cursor.fetchall()
         waiting_list = [dict(r) for r in waiting_rows]
     except sqlite3.OperationalError:
-        # Fallback if database tables are still being set up by Teammate 2
         active_patron = None
         waiting_list = []
     finally:
         conn.close()
 
-    # Calculate real-time dynamic wait window using calibration engine
+    # Calculate calibrated wait interval using statistical engine
     try:
         wait_stats = calculate_dynamic_queue_wait(business_id)
     except Exception:
@@ -66,9 +94,15 @@ def get_merchant_queue(business_id):
         "wait_stats": wait_stats
     }), 200
 
-# --- 3. Add In-Person Walk-In Customer Endpoint ---
+# -----------------------------------------------------------------------------
+# ROUTE 3: Register Walk-In Patron API
+# -----------------------------------------------------------------------------
 @app.route("/api/walkin", methods=["POST"])
 def add_walkin():
+    """
+    Registers an in-person customer directly at the front desk into the queue.
+    Sets is_walkin = 1 and status = 'waiting'.
+    """
     data = request.get_json() or {}
     business_id = data.get("business_id", 1)
     service_id = data.get("service_id", 1)
@@ -88,14 +122,20 @@ def add_walkin():
         conn.commit()
     except sqlite3.OperationalError as e:
         conn.close()
-        return jsonify({"error": f"Database table error: {str(e)}"}), 500
+        return jsonify({"error": f"Database error: {str(e)}"}), 500
 
     conn.close()
     return jsonify({"message": f"{customer_name} added to queue successfully."}), 201
 
-# --- 4. Online App Customer Booking with AI Triage ---
+# -----------------------------------------------------------------------------
+# ROUTE 4: Online App Booking with Cognitive AI Triage API
+# -----------------------------------------------------------------------------
 @app.route("/api/appointments", methods=["POST"])
 def book_appointment():
+    """
+    Allows online mobile users to join the virtual queue. Passes qualitative
+    notes through the AI triage engine to compute dynamic complexity modifiers.
+    """
     data = request.get_json() or {}
     business_id = data.get("business_id", 1)
     service_id = data.get("service_id", 1)
@@ -108,7 +148,6 @@ def book_appointment():
     conn = get_db()
     cursor = conn.cursor()
 
-    # Fetch service name for AI context
     try:
         cursor.execute("SELECT name FROM services WHERE id = ?", (service_id,))
         service_row = cursor.fetchone()
@@ -116,7 +155,7 @@ def book_appointment():
     except sqlite3.OperationalError:
         service_name = "General Service"
 
-    # Calculate AI modifier based on customer notes
+    # Compute AI complexity modifier
     ai_modifier = get_ai_ticket_modifier(service_name, notes)
     now_str = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
 
@@ -130,7 +169,7 @@ def book_appointment():
         conn.commit()
     except sqlite3.OperationalError as e:
         conn.close()
-        return jsonify({"error": f"Database table error: {str(e)}"}), 500
+        return jsonify({"error": f"Database error: {str(e)}"}), 500
 
     conn.close()
     return jsonify({
@@ -138,9 +177,15 @@ def book_appointment():
         "ai_modifier_applied": ai_modifier
     }), 201
 
-# --- 5. Seat Next Customer Endpoint ---
+# -----------------------------------------------------------------------------
+# ROUTE 5: Seat Next Patron API
+# -----------------------------------------------------------------------------
 @app.route("/api/queue/<int:ticket_id>/start", methods=["PUT"])
 def seat_customer(ticket_id):
+    """
+    Transitions a customer ticket from 'waiting' to 'in_service'.
+    Records the precise UTC start timestamp to calculate duration upon completion.
+    """
     conn = get_db()
     cursor = conn.cursor()
     now_str = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
@@ -153,11 +198,17 @@ def seat_customer(ticket_id):
     conn.commit()
     conn.close()
 
-    return jsonify({"message": "Patron is now in chair."}), 200
+    return jsonify({"message": "Patron is now active in chair."}), 200
 
-# --- 6. Complete Service & Trigger EMA Calibration ---
+# -----------------------------------------------------------------------------
+# ROUTE 6: Complete Service & Trigger Statistical Calibration API
+# -----------------------------------------------------------------------------
 @app.route("/api/queue/<int:ticket_id>/complete", methods=["PUT"])
 def complete_service(ticket_id):
+    """
+    Marks a service completed, computes actual elapsed duration, and invokes
+    the EMA calibration helper to update future duration predictions.
+    """
     conn = get_db()
     cursor = conn.cursor()
 
@@ -170,7 +221,7 @@ def complete_service(ticket_id):
     now = datetime.utcnow()
     started_at_str = ticket["started_at"]
 
-    # Calculate duration in minutes
+    # Calculate actual elapsed service duration
     if started_at_str:
         try:
             started_at = datetime.strptime(started_at_str, "%Y-%m-%d %H:%M:%S")
@@ -196,7 +247,7 @@ def complete_service(ticket_id):
     conn.commit()
     conn.close()
 
-    # Trigger EMA calibration from calibration.py
+    # Trigger self-learning statistical calibration
     new_ema = update_service_ema(ticket["service_id"], duration_minutes)
 
     return jsonify({
@@ -205,5 +256,19 @@ def complete_service(ticket_id):
         "calibrated_ema": new_ema
     }), 200
 
+# -----------------------------------------------------------------------------
+# ROUTE 7: AI Wait-Time Estimation Helper API
+# -----------------------------------------------------------------------------
+@app.route("/api/ai/estimate-wait", methods=["POST"])
+def api_ai_estimate():
+    data = request.get_json() or {}
+    queue = int(data.get("queue", 1))
+    wait_per_person = int(data.get("wait_per_person", 15))
+    notes = data.get("notes", "")
+
+    result = estimate_wait_with_ai(queue, wait_per_person, notes)
+    return jsonify(result), 200
+
+# Server launch entrypoint for local execution
 if __name__ == "__main__":
     app.run(debug=True)
