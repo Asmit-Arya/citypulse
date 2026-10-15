@@ -1,0 +1,166 @@
+/*
+=============================================================================
+FILE: static/css/style.css
+ROLE: Custom UI/UX Theme & Visual Styling Layer (Teammate 1)
+-----------------------------------------------------------------------------
+PURPOSE:
+Provides a synchronized dark-mode aesthetic for CityPulse. Implements a deep 
+midnight palette, subtle border glows, glassmorphism card surfaces, and 
+high-contrast action buttons.
+
+COLOR SYSTEM TOKENS:
+- Canvas Background: #0b0f19 (Midnight Obsidian)
+- Elevated Surface:  #111827 (Charcoal Card Background)
+- Primary Accent:    #6366f1 (Electric Indigo)
+- Success / Active:  #10b981 (Emerald Green)
+- Warning / Busy:    #f59e0b (Amber / Gold)
+- Typography:        #f8fafc (Primary Text), #94a3b8 (Muted Gray)
+=============================================================================
+*/
+
+/* --- 1. Global Reset & Canvas --- */
+body {
+    background-color: #0b0f19;
+    color: #f8fafc;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+}
+
+/* --- 2. Navigation Bar --- */
+.cp-navbar {
+    background-color: rgba(17, 24, 39, 0.85);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.brand-title {
+    font-size: 1.35rem;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    background: linear-gradient(135deg, #a5b4fc 0%, #6366f1 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+/* --- 3. View Switcher Pill Toggle --- */
+.nav-pill-switcher {
+    background-color: #1f2937;
+    border-radius: 9999px;
+    padding: 4px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.nav-pill-switcher .btn {
+    border-radius: 9999px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    padding: 6px 18px;
+    color: #94a3b8;
+    border: none;
+    transition: all 0.2s ease-in-out;
+}
+
+.nav-pill-switcher .btn.active {
+    background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+    color: #ffffff;
+    box-shadow: 0 2px 10px rgba(99, 102, 241, 0.35);
+}
+
+/* --- 4. Glassmorphic Cards --- */
+.cp-card {
+    background-color: #111827;
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    border-radius: 14px;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.cp-card:hover {
+    border-color: rgba(99, 102, 241, 0.4);
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 0 15px -3px rgba(99, 102, 241, 0.15);
+    transform: translateY(-2px);
+}
+
+/* --- 5. High-Contrast Buttons --- */
+.btn-cp-primary {
+    background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+    color: #ffffff;
+    font-weight: 600;
+    border: none;
+    border-radius: 8px;
+    padding: 8px 16px;
+    transition: all 0.2s ease;
+}
+
+.btn-cp-primary:hover {
+    background: linear-gradient(135deg, #4f46e5 0%, #4338ca 100%);
+    box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4);
+    color: #ffffff;
+}
+
+.btn-cp-outline {
+    background: transparent;
+    color: #a5b4fc;
+    border: 1px solid rgba(99, 102, 241, 0.4);
+    font-weight: 600;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+}
+
+.btn-cp-outline:hover {
+    background: rgba(99, 102, 241, 0.12);
+    border-color: #6366f1;
+    color: #ffffff;
+}
+
+/* --- 6. Operational Badges --- */
+.badge-status-open {
+    background-color: rgba(16, 185, 129, 0.15);
+    color: #10b981;
+    border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.badge-status-busy {
+    background-color: rgba(245, 158, 11, 0.15);
+    color: #f59e0b;
+    border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.badge-status-closed {
+    background-color: rgba(239, 68, 68, 0.15);
+    color: #ef4444;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.badge-wait-pill {
+    background: rgba(99, 102, 241, 0.15);
+    color: #a5b4fc;
+    border: 1px solid rgba(99, 102, 241, 0.3);
+    font-weight: 700;
+}
+
+/* --- 7. Form Controls --- */
+.cp-input, .cp-select {
+    background-color: #1f2937 !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    color: #f8fafc !important;
+    border-radius: 8px;
+}
+
+.cp-input:focus, .cp-select:focus {
+    border-color: #6366f1 !important;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.25) !important;
+}
+
+/* --- 8. Queue List & Modals --- */
+.queue-list-container {
+    max-height: 480px;
+    overflow-y: auto;
+}
+
+.modal-content.cp-modal {
+    background-color: #111827;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 16px;
+    color: #f8fafc;
+}
