@@ -13,6 +13,8 @@ Provides dual-mode functionality through a clean view-toggle:
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <!-- Browser Tab Favicon -->
+<link rel="icon" type="image/svg+xml" href="/static/img/logo.svg">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CityPulse - Real-Time Operational Visibility</title>
@@ -23,15 +25,27 @@ Provides dual-mode functionality through a clean view-toggle:
 </head>
 <body>
 
+    
     <!-- 1. Top Navbar & View Switcher -->
     <nav class="navbar navbar-expand-lg cp-navbar sticky-top py-2">
         <div class="container d-flex justify-content-between align-items-center">
             
-            <div class="d-flex align-items-center">
-                <span class="brand-title">CityPulse</span>
-                <span class="badge badge-wait-pill ms-3 d-none d-md-inline" id="dynamicWaitBadge">~20-30 mins wait</span>
-            </div>
-
+            <!--
+=============================================================================
+SNIPPET: templates/index.html (Navigation Brand Section)
+-----------------------------------------------------------------------------
+PURPOSE:
+Binds the Geo-Radar Beacon vector logo directly to the left of the 
+gradient 'CityPulse' text brand with smooth alignment and spacing.
+=============================================================================
+-->
+<div class="d-flex align-items-center">
+    <a href="/" class="d-flex align-items-center text-decoration-none">
+        <img src="/static/img/logo.svg" alt="CityPulse Logo" width="38" height="38" class="me-2 cp-logo-glow">
+        <span class="brand-title">CityPulse</span>
+    </a>
+    <span class="badge badge-wait-pill ms-3 d-none d-md-inline" id="dynamicWaitBadge">~20-30 mins wait</span>
+</div>
             <!-- View Switcher -->
             <div class="nav-pill-switcher d-flex">
                 <button type="button" class="btn active" id="btnViewCustomer" onclick="switchView('customer')">

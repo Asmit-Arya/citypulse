@@ -28,6 +28,25 @@ body {
 }
 
 /* --- 2. Navigation Bar --- */
+/*
+=============================================================================
+SNIPPET: static/css/style.css
+-----------------------------------------------------------------------------
+PURPOSE:
+Adds hover transitions, elevation, and an electric indigo drop-shadow glow 
+effect when hovering over the CityPulse brand logo.
+=============================================================================
+*/
+
+.cp-logo-glow {
+    transition: transform 0.25s ease, filter 0.25s ease;
+    border-radius: 10px;
+}
+
+.cp-logo-glow:hover {
+    transform: scale(1.08);
+    filter: drop-shadow(0 0 10px rgba(99, 102, 241, 0.7));
+}
 .cp-navbar {
     background-color: rgba(17, 24, 39, 0.85);
     backdrop-filter: blur(12px);
