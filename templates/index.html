@@ -1,0 +1,171 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#080e1a">
+  <meta name="description" content="CityPulse helps you know before you go with live local queue information.">
+  <title>CityPulse — Know Before You Go</title>
+  <link rel="icon" type="image/svg+xml" href="/static/img/logo.svg">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+  <!-- PAGE 1: Public landing page -->
+  <section id="landingView" class="landing-page page-view">
+    <nav class="landing-nav">
+      <a class="brand-lockup" href="#top" id="brandHomeLink" aria-label="CityPulse home">
+        <img src="/static/img/logo.svg" alt="" class="brand-logo">
+        <span class="brand-title">CityPulse</span>
+      </a>
+      <div class="landing-links">
+        <a class="active" href="#top">Home</a>
+        <a href="#features">Services</a>
+        <a href="#how-it-works">About</a>
+      </div>
+      <button type="button" class="btn btn-gradient nav-cta" id="navGetStarted">Get Started <span aria-hidden="true">↗</span></button>
+    </nav>
+
+    <main id="top">
+      <section class="landing-hero">
+        <div class="hero-shade"></div>
+        <div class="hero-inner">
+          <div class="hero-copy">
+            <p class="eyebrow">QUEUE LESS. DO MORE.</p>
+            <h1>Smart Queues for<br><span class="gradient-text">a Smoother City</span></h1>
+            <p class="hero-description">Find local services, check the live queue, and make the most of your time — without the guesswork.</p>
+            <button type="button" class="btn btn-gradient btn-large" id="heroGetStarted"><span aria-hidden="true">↗</span> Get Started</button>
+            <p class="hero-footnote">Local services. More time for life.</p>
+          </div>
+
+          <div class="hero-visual" aria-label="Preview of CityPulse live service listings">
+            <div class="phone-mockup">
+              <div class="phone-top"><span>9:41</span><span>● ● ●</span></div>
+              <div class="phone-brand"><img src="/static/img/logo.svg" alt=""><strong>CityPulse</strong></div>
+              <p class="phone-greeting">Good morning,</p>
+              <h3 class="phone-name">Find your next stop.</h3>
+              <div class="phone-search">⌕ <span>Search local services</span></div>
+              <div class="phone-section-title">Popular nearby</div>
+              <div class="phone-service"><span class="service-icon scissors">✂</span><span class="phone-service-copy"><strong>Hair Salon</strong><small>2 min wait · Open</small></span><span class="service-chevron">›</span></div>
+              <div class="phone-service"><span class="service-icon coffee">☕</span><span class="phone-service-copy"><strong>Café & Bakery</strong><small>5 min wait · Open</small></span><span class="service-chevron">›</span></div>
+              <div class="phone-service"><span class="service-icon retail">▣</span><span class="phone-service-copy"><strong>Retail Store</strong><small>10 min wait · Open</small></span><span class="service-chevron">›</span></div>
+              <div class="phone-nav"><span class="selected">⌂<small>Home</small></span><span>▤<small>Bookings</small></span><span>♙<small>Profile</small></span></div>
+            </div>
+            <div class="time-card"><span class="time-check">✓</span><strong>Your time matters.</strong><p>Real-time queues. Less waiting. More doing.</p></div>
+            <div class="hero-orbit orbit-one"></div><div class="hero-orbit orbit-two"></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="feature-section" id="features">
+        <div class="section-heading"><p class="eyebrow">A BETTER WAY TO PLAN YOUR DAY</p><h2>Why CityPulse?</h2><p>Simple, fast, reliable — for you and your local community.</p></div>
+        <div class="feature-grid">
+          <article class="feature-item"><span class="feature-icon icon-blue">ϟ</span><h3>Real-Time Updates</h3><p>See queue conditions and estimated waits before you leave.</p></article>
+          <article class="feature-item"><span class="feature-icon icon-teal">◷</span><h3>Save Time</h3><p>Reserve your spot and spend less time standing in line.</p></article>
+          <article class="feature-item"><span class="feature-icon icon-violet">⬡</span><h3>Trusted Local Businesses</h3><p>Find useful services and support businesses near you.</p></article>
+          <article class="feature-item"><span class="feature-icon icon-orange">♧</span><h3>A Smoother Experience</h3><p>Make a plan with clearer information and fewer surprises.</p></article>
+        </div>
+      </section>
+      <section class="how-section" id="how-it-works"><span class="eyebrow">YOUR TIME, BETTER SPENT</span><h2>Know before you go.</h2><p>Choose a local business, check the current line, and join the virtual queue when you're ready.</p><button type="button" class="btn btn-gradient" id="bottomGetStarted">Explore CityPulse <span aria-hidden="true">→</span></button></section>
+    </main>
+    <footer class="landing-footer"><a class="brand-lockup" href="#top"><img src="/static/img/logo.svg" alt="" class="brand-logo"><span class="brand-title">CityPulse</span></a><span>Know Before You Go</span><span>© CityPulse</span></footer>
+  </section>
+
+  <!-- PAGE 2: Login screen -->
+  <section id="loginView" class="auth-page page-view" hidden>
+    <button class="auth-back" type="button" id="backToHomeBtn">← <span>Back to home</span></button>
+    <div class="auth-layout">
+      <section class="auth-story">
+        <a class="brand-lockup auth-brand" href="#" id="loginBrandLink"><img src="/static/img/logo.svg" alt="" class="brand-logo"><span class="brand-title">CityPulse</span></a>
+        <div class="auth-story-copy"><p class="eyebrow">YOUR CITY, IN YOUR TIME</p><h1>Know Before<br><span class="gradient-text">You Go</span></h1><div class="short-rule"></div><p>Check live wait times, book your spot, and enjoy a smoother experience at your favourite local businesses.</p></div>
+        <div class="auth-benefits"><div><span class="benefit-symbol">ϟ</span><span><strong>Real-Time Availability</strong><small>See live wait times at a glance</small></span></div><div><span class="benefit-symbol">▦</span><span><strong>Easy Booking</strong><small>Reserve your spot in seconds</small></span></div><div><span class="benefit-symbol">⬡</span><span><strong>Local Businesses</strong><small>Support your neighbourhood</small></span></div></div>
+      </section>
+      <section class="auth-card-wrap">
+        <form id="loginForm" class="auth-card">
+          <div class="auth-card-heading"><p class="eyebrow">WELCOME TO CITYPULSE</p><h2>Welcome Back</h2><p>Sign in to continue to your account</p></div>
+          <div class="role-switch" role="group" aria-label="Choose account type"><button type="button" class="role-btn active" data-role="customer"><span>♙</span> Customer</button><button type="button" class="role-btn" data-role="merchant"><span>▣</span> Merchant</button></div>
+          <div id="googleSignInBtn" class="google-signin-host" aria-label="Continue with Google"></div>
+          <div class="or-divider"><span></span><small>or use demo sign-in</small><span></span></div>
+          <label class="field-label" for="loginUsername">Email address</label><div class="input-with-icon"><span>♙</span><input id="loginUsername" name="email" type="email" placeholder="you@example.com" autocomplete="username" required maxlength="254"></div>
+          <label class="field-label" for="loginPassword">Password</label><div class="input-with-icon"><span>▣</span><input id="loginPassword" name="password" type="password" placeholder="Enter your password" autocomplete="current-password" required minlength="1"><button type="button" id="togglePasswordBtn" class="password-toggle" aria-label="Show password">◉</button></div>
+          <div class="auth-options"><label class="remember-option"><input type="checkbox" id="rememberMe"> <span>Remember me</span></label><button type="button" class="text-link" id="forgotPasswordBtn">Forgot password?</button></div>
+          <p id="loginError" class="login-error" role="alert" hidden></p>
+          <button type="submit" class="btn btn-gradient auth-submit">Sign In <span aria-hidden="true">→</span></button>
+          <p class="signup-line">New to CityPulse? <button type="button" id="signUpBtn" class="text-link">Create an account</button></p>
+          <button type="button" id="demoSignInBtn" class="demo-signin-btn">Continue as demo</button>
+          <p class="demo-note">Demo access is for local testing. Use an account or Google sign-in for normal access.</p>
+        </form>
+      </section>
+    </div>
+  </section>
+
+  <!-- APP: Customer and merchant workspaces -->
+  <section id="appShell" class="app-shell page-view" hidden>
+    <nav class="navbar cp-navbar sticky-top py-2"><div class="container d-flex justify-content-between align-items-center gap-3">
+      <a href="#" class="brand-lockup text-decoration-none" id="appBrandLink"><img src="/static/img/logo.svg" alt="" class="brand-logo"><span class="brand-title">CityPulse</span></a>
+      <span class="badge badge-wait-pill d-none d-md-inline" id="dynamicWaitBadge">Live queue insights</span>
+      <div class="user-menu-wrap"><button type="button" class="user-chip" id="userMenuBtn" aria-haspopup="true" aria-expanded="false"><span class="user-avatar" id="userAvatar">U</span><span id="userNameLabel">Your account</span><span class="user-chevron">⌄</span></button><div class="user-dropdown" id="userMenuDropdown" hidden><div class="dropdown-user-summary"><small>SIGNED IN AS</small><strong id="dropdownUserName">Your account</strong><span id="dropdownUserRole">Customer</span></div><button type="button" class="dropdown-item-btn" id="profileMenuBtn">♙ <span>Profile</span></button><button type="button" class="dropdown-item-btn" id="settingsMenuBtn">⚙ <span>Settings</span></button><div class="dropdown-divider"></div><button type="button" class="dropdown-item-btn signout-item" id="logoutBtn">↪ <span>Sign Out</span></button></div></div>
+    </div></nav>
+
+    <main class="container app-content my-4">
+      <section id="viewCustomer" class="workspace-view" hidden>
+        <div class="customer-welcome"><div><p class="eyebrow">YOUR NEIGHBOURHOOD, SIMPLIFIED</p><h1 id="customerGreeting">Find your next stop.</h1><p>Explore local services, check the queue, and book your spot.</p></div><div class="city-chip">⌖ <span>Raipur</span></div></div>
+        <div class="filter-panel"><div class="search-box"><span>⌕</span><input type="search" id="searchInput" placeholder="Search local businesses..."></div><select id="cityFilter" aria-label="Filter by city"><option value="">All cities</option><option value="Raipur">Raipur</option><option value="Bhilai">Bhilai</option></select><select id="categoryFilter" aria-label="Filter by category"><option value="">All categories</option><option value="Salon">Salon & Personal Care</option><option value="Healthcare">Healthcare & Clinics</option><option value="Automotive">Automotive & Repair</option><option value="Food & Beverages">Food & Beverages</option><option value="Retail">Retail</option></select></div>
+        <div class="section-title-row"><div><p class="eyebrow">AVAILABLE NEAR YOU</p><h2>Explore Services</h2></div><span id="businessCount" class="result-count"></span></div>
+        <div class="row g-3" id="businessCardsGrid"><div class="col-12"><div class="empty-state">Loading local services…</div></div></div>
+      </section>
+
+      <section id="viewMerchant" class="workspace-view" hidden>
+        <div class="merchant-welcome"><div><p class="eyebrow">MERCHANT WORKSPACE</p><h1>Today's queue, at a glance.</h1><p>Manage your line and keep service moving.</p></div><span class="live-indicator"><i></i> Live queue</span></div>
+        <div class="merchant-summary-grid"><article class="summary-card"><small>WAITING IN LINE</small><strong id="merchantQueueCount">—</strong><span>Customers in queue</span></article><article class="summary-card"><small>CURRENT SERVICE</small><strong id="merchantActiveName">—</strong><span>Customer being served</span></article><article class="summary-card"><small>ESTIMATED WAIT</small><strong id="merchantWaitStat">—</strong><span>Based on current queue</span></article></div>
+        <div class="row g-4"><div class="col-lg-5"><section class="merchant-panel"><div class="panel-title"><div><p class="eyebrow">IN SERVICE</p><h2>Current workstation</h2></div></div><div id="activeChairContainer"><div class="empty-state">Loading current service…</div></div></section>
+          <section class="merchant-panel mt-4"><div class="panel-title"><div><p class="eyebrow">WALK-IN</p><h2>Add a customer</h2></div></div><form id="walkInForm"><label class="field-label" for="walkInCustomerName">Customer name <span class="optional-label">(optional)</span></label><div class="walkin-name-row"><input type="text" id="walkInCustomerName" class="form-control cp-input" placeholder="Enter name (optional)" maxlength="80"><button type="button" id="walkInNumberBtn" class="queue-number-btn" aria-pressed="false">Use #n</button><input type="checkbox" id="walkInUseNumber" hidden></div><label class="field-label mt-3" for="walkInServiceSelect">Service</label><select id="walkInServiceSelect" class="form-select cp-select"><option value="1">Standard Haircut (~20m)</option><option value="2">Beard Trim & Lineup (~10m)</option><option value="3">Hair Color & Styling (~45m)</option></select><button type="submit" class="btn btn-gradient w-100 mt-3">+ Add to Queue</button></form></section></div>
+          <div class="col-lg-7"><section class="merchant-panel"><div class="panel-title"><div><p class="eyebrow">UP NEXT</p><h2>Waiting queue</h2></div></div><div class="queue-list-container" id="merchantQueueList"><div class="empty-state">Loading queue…</div></div></section></div></div>
+      </section>
+    </main>
+  </section>
+
+  <!-- Account creation modal -->
+  <div class="modal fade" id="signupModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered"><div class="modal-content cp-modal">
+      <div class="modal-header border-0 pb-0"><div><p class="eyebrow mb-1">JOIN CITYPULSE</p><h5 class="modal-title fw-bold">Create your account</h5></div><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button></div>
+      <form id="registerForm"><div class="modal-body">
+        <label class="field-label" for="registerName">Full name</label><input class="form-control cp-input" id="registerName" maxlength="100" autocomplete="name" required>
+        <label class="field-label" for="registerEmail">Email address</label><input class="form-control cp-input" id="registerEmail" type="email" maxlength="254" autocomplete="email" required>
+        <label class="field-label" for="registerPassword">Password (at least 8 characters)</label><input class="form-control cp-input" id="registerPassword" type="password" minlength="8" autocomplete="new-password" required>
+        <label class="field-label" for="registerPasswordConfirm">Confirm password</label><input class="form-control cp-input" id="registerPasswordConfirm" type="password" minlength="8" autocomplete="new-password" required>
+        <p class="login-error" id="registerError" role="alert" hidden></p>
+      </div><div class="modal-footer border-0 pt-0"><button type="button" class="btn btn-cp-outline" data-bs-dismiss="modal">Cancel</button><button type="submit" class="btn btn-gradient">Create account</button></div></form>
+    </div></div>
+  </div>
+
+  <!-- Password reset request modal -->
+  <div class="modal fade" id="forgotPasswordModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered"><div class="modal-content cp-modal">
+      <div class="modal-header border-0 pb-0"><div><p class="eyebrow mb-1">ACCOUNT RECOVERY</p><h5 class="modal-title fw-bold">Reset your password</h5></div><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button></div>
+      <form id="forgotPasswordForm"><div class="modal-body"><p class="modal-help">Enter the email used for your CityPulse account. If it exists, we will send a secure reset link.</p><label class="field-label" for="forgotPasswordEmail">Email address</label><input class="form-control cp-input" id="forgotPasswordEmail" type="email" autocomplete="email" required><p class="login-error" id="forgotPasswordError" role="alert" hidden></p></div><div class="modal-footer border-0 pt-0"><button type="button" class="btn btn-cp-outline" data-bs-dismiss="modal">Cancel</button><button type="submit" class="btn btn-gradient">Send reset link</button></div></form>
+    </div></div>
+  </div>
+
+  <!-- Set new password modal, opened by emailed reset links -->
+  <div class="modal fade" id="resetPasswordModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered"><div class="modal-content cp-modal">
+      <div class="modal-header border-0 pb-0"><div><p class="eyebrow mb-1">SECURE YOUR ACCOUNT</p><h5 class="modal-title fw-bold">Choose a new password</h5></div><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button></div>
+      <form id="resetPasswordForm"><div class="modal-body"><label class="field-label" for="resetNewPassword">New password (at least 8 characters)</label><input class="form-control cp-input" id="resetNewPassword" type="password" minlength="8" autocomplete="new-password" required><label class="field-label" for="resetConfirmPassword">Confirm new password</label><input class="form-control cp-input" id="resetConfirmPassword" type="password" minlength="8" autocomplete="new-password" required><p class="login-error" id="resetPasswordError" role="alert" hidden></p></div><div class="modal-footer border-0 pt-0"><button type="submit" class="btn btn-gradient">Save new password</button></div></form>
+    </div></div>
+  </div>
+
+  <!-- Booking confirmation modal -->
+  <div class="modal fade" id="customerBookingModal" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-dialog-centered"><div class="modal-content cp-modal"><div class="modal-header border-0 pb-0"><div><p class="eyebrow mb-1">ALMOST THERE</p><h5 class="modal-title fw-bold" id="customerBookingModalTitle">Confirm your booking</h5></div><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button></div><form id="onlineBookingForm"><div class="modal-body"><input type="hidden" id="modalBusinessId"><label class="field-label" for="onlineCustomerName">Booking name</label><input type="text" class="form-control cp-input mb-3" id="onlineCustomerName" placeholder="Your name" maxlength="100" required><label class="field-label" for="onlineServiceSelect">Select service</label><select class="form-select cp-select mb-3" id="onlineServiceSelect"><option value="1">Standard Haircut (20 mins)</option><option value="2">Beard Trim & Lineup (10 mins)</option><option value="3">Hair Color & Styling (45 mins)</option></select><label class="field-label" for="onlineCustomerNotes">Notes <span class="optional-label">(optional)</span></label><textarea class="form-control cp-input" id="onlineCustomerNotes" rows="2" placeholder="Anything the business should know?"></textarea><p class="modal-help">The current wait is an estimate and may change as the queue moves.</p></div><div class="modal-footer border-0 pt-0"><button type="button" class="btn btn-cp-outline" data-bs-dismiss="modal">Cancel</button><button type="submit" class="btn btn-gradient">Confirm Booking</button></div></form></div></div></div>
+
+  <script>
+    window.CITYPULSE_GOOGLE_CLIENT_ID = {{ google_client_id|tojson }};
+    window.CITYPULSE_DEMO_LOGIN_ENABLED = {{ demo_login_enabled|tojson }};
+  </script>
+  <script src="https://accounts.google.com/gsi/client" async defer onload="window.initializeGoogleSignIn && window.initializeGoogleSignIn()"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="/static/js/ui.js"></script>
+  <script src="/static/js/api.js"></script>
+</body>
+</html>

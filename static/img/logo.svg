@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" fill="none" role="img" aria-labelledby="title">
+  <title id="title">CityPulse</title>
+  <defs>
+    <linearGradient id="tile" x1="5" y1="3" x2="60" y2="62" gradientUnits="userSpaceOnUse"><stop stop-color="#202b50"/><stop offset="1" stop-color="#0b1226"/></linearGradient>
+    <linearGradient id="pin" x1="17" y1="8" x2="49" y2="50" gradientUnits="userSpaceOnUse"><stop stop-color="#c4b5fd"/><stop offset=".48" stop-color="#818cf8"/><stop offset="1" stop-color="#4f46e5"/></linearGradient>
+    <linearGradient id="pulse" x1="16" y1="0" x2="48" y2="0" gradientUnits="userSpaceOnUse"><stop stop-color="#67e8f9"/><stop offset="1" stop-color="#a5b4fc"/></linearGradient>
+  </defs>
+  <rect x="2" y="2" width="60" height="60" rx="18" fill="url(#tile)" stroke="#a5b4fc" stroke-opacity=".28" stroke-width="1.5"/>
+  <circle cx="32" cy="27" r="22" stroke="#818cf8" stroke-opacity=".38" stroke-width="1.5" stroke-dasharray="3 4"/>
+  <circle cx="32" cy="27" r="16.5" stroke="url(#pulse)" stroke-opacity=".78" stroke-width="1.5"/>
+  <path d="M32 51C25.3 42 17.5 34.1 17.5 25.6a14.5 14.5 0 1 1 29 0C46.5 34.1 38.7 42 32 51Z" fill="url(#pin)" stroke="#e0e7ff" stroke-opacity=".75" stroke-width="1.2"/>
+  <path d="M22 26h5l3-5 4.2 11 3.3-7H42" stroke="#fff" stroke-width="2.7" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="32" cy="25.5" r="2.1" fill="#fff"/>
+</svg>
