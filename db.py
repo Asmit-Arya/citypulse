@@ -17,11 +17,22 @@ class HybridRow(dict):
         return super().__getitem__(key)
 
 
+
 def _hybrid_row_factory(cursor):
-    names = [column.name for column in cursor.description]
+    description = cursor.description
+
+    # CREATE TABLE, INSERT without returned rows, and other
+    # commands may not return columns.
+    if description is None:
+        return None
+
+    names = [column.name for column in description]
+
     def make_row(values):
         return HybridRow(zip(names, values))
+
     return make_row
+
 
 
 def _adapt_sql(sql: str) -> str:
