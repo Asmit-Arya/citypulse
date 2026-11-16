@@ -19,6 +19,12 @@ from functools import wraps
 
 from werkzeug.security import generate_password_hash, check_password_hash
 
+try:
+    from psycopg import IntegrityError as PostgresIntegrityError
+except ImportError:  # PostgreSQL driver is needed only when DATABASE_URL is configured.
+    class PostgresIntegrityError(Exception):
+        pass
+
 import requests
 from dotenv import load_dotenv
 from flask import Flask, jsonify, render_template, request, session
@@ -26,6 +32,7 @@ from flask import Flask, jsonify, render_template, request, session
 BASE_DIR = Path(__file__).resolve().parent
 load_dotenv(BASE_DIR / ".env")
 DB_PATH = Path(os.getenv("CITYPULSE_DB_PATH", str(BASE_DIR / "citypulse.db")))
+DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
 
 from calibration import update_service_ema, calculate_dynamic_queue_wait
 from ai_service import get_ai_ticket_modifier
@@ -54,7 +61,11 @@ def now_string() -> str:
     return datetime.now(timezone.utc).replace(tzinfo=None, microsecond=0).strftime("%Y-%m-%d %H:%M:%S")
 
 
-def get_db() -> sqlite3.Connection:
+def get_db():
+    """Return a SQLite connection locally or a PostgreSQL connection when DATABASE_URL is set."""
+    if DATABASE_URL:
+        from db import get_postgres_connection
+        return get_postgres_connection(DATABASE_URL)
     conn = sqlite3.connect(str(DB_PATH), timeout=8)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
@@ -67,6 +78,91 @@ def ensure_schema() -> None:
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     conn = get_db()
     try:
+        if DATABASE_URL:
+            conn.execute("""CREATE TABLE IF NOT EXISTS businesses (
+                id BIGSERIAL PRIMARY KEY,
+                name TEXT NOT NULL,
+                category TEXT NOT NULL,
+                city TEXT NOT NULL,
+                status TEXT NOT NULL DEFAULT 'open',
+                current_queue INTEGER NOT NULL DEFAULT 0,
+                active_counters INTEGER NOT NULL DEFAULT 1,
+                owner_user_id TEXT
+            )""")
+            conn.execute("""CREATE TABLE IF NOT EXISTS services (
+                id BIGSERIAL PRIMARY KEY,
+                business_id BIGINT NOT NULL REFERENCES businesses(id) ON DELETE CASCADE,
+                name TEXT NOT NULL,
+                current_estimated_duration DOUBLE PRECISION NOT NULL DEFAULT 15,
+                total_completed_count INTEGER NOT NULL DEFAULT 0
+            )""")
+            conn.execute("""CREATE TABLE IF NOT EXISTS queue_tickets (
+                id BIGSERIAL PRIMARY KEY,
+                business_id BIGINT NOT NULL REFERENCES businesses(id) ON DELETE CASCADE,
+                service_id BIGINT NOT NULL REFERENCES services(id) ON DELETE CASCADE,
+                customer_name TEXT NOT NULL,
+                notes TEXT,
+                is_walkin SMALLINT NOT NULL DEFAULT 0,
+                status TEXT NOT NULL DEFAULT 'waiting',
+                ai_duration_modifier DOUBLE PRECISION NOT NULL DEFAULT 0,
+                started_at TEXT,
+                completed_at TEXT,
+                created_at TEXT NOT NULL,
+                customer_key TEXT,
+                merchant_response TEXT
+            )""")
+            conn.execute("ALTER TABLE businesses ADD COLUMN IF NOT EXISTS owner_user_id TEXT")
+            conn.execute("ALTER TABLE queue_tickets ADD COLUMN IF NOT EXISTS customer_key TEXT")
+            conn.execute("ALTER TABLE queue_tickets ADD COLUMN IF NOT EXISTS merchant_response TEXT")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_tickets_business_status_created ON queue_tickets(business_id, status, created_at, id)")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_tickets_customer_key ON queue_tickets(customer_key, created_at)")
+            conn.execute("""CREATE TABLE IF NOT EXISTS users (
+                id BIGSERIAL PRIMARY KEY,
+                name TEXT NOT NULL,
+                email TEXT NOT NULL,
+                password_hash TEXT NOT NULL,
+                role TEXT NOT NULL DEFAULT 'customer',
+                created_at TEXT NOT NULL
+            )""")
+            conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email_lower ON users(LOWER(email))")
+            conn.execute("""CREATE TABLE IF NOT EXISTS password_reset_tokens (
+                id BIGSERIAL PRIMARY KEY,
+                user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                token_hash TEXT NOT NULL UNIQUE,
+                expires_at TEXT NOT NULL,
+                used_at TEXT,
+                created_at TEXT NOT NULL
+            )""")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_reset_tokens_user ON password_reset_tokens(user_id, expires_at)")
+            count = conn.execute("SELECT COUNT(*) FROM businesses").fetchone()[0]
+            if count == 0:
+                seed = [
+                    ("Urban Cut Studio", "Salon", "Raipur", "open", 1),
+                    ("Apex Dental Clinic", "Healthcare", "Raipur", "open", 1),
+                    ("Metro Auto Workshop", "Automotive", "Bhilai", "busy", 2),
+                ]
+                service_seed = [
+                    ("Standard Haircut", 20), ("Beard Trim & Lineup", 10), ("Hair Color & Styling", 45),
+                    ("Dental Consultation", 20), ("Dental Cleaning", 35),
+                    ("Quick Repair", 30), ("General Vehicle Service", 50),
+                ]
+                business_ids = []
+                for name, category, city, status, counters in seed:
+                    row = conn.execute(
+                        "INSERT INTO businesses(name,category,city,status,active_counters) VALUES (?,?,?,?,?) RETURNING id",
+                        (name, category, city, status, counters),
+                    ).fetchone()
+                    business_ids.append(row["id"])
+                for business_id, (service_name, duration) in zip(
+                    [business_ids[0]] * 3 + [business_ids[1]] * 2 + [business_ids[2]] * 2, service_seed
+                ):
+                    conn.execute(
+                        "INSERT INTO services(business_id,name,current_estimated_duration) VALUES (?,?,?)",
+                        (business_id, service_name, duration),
+                    )
+            conn.commit()
+            return
+
         conn.execute("""CREATE TABLE IF NOT EXISTS businesses (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL,
@@ -74,7 +170,8 @@ def ensure_schema() -> None:
             city TEXT NOT NULL,
             status TEXT NOT NULL DEFAULT 'open',
             current_queue INTEGER NOT NULL DEFAULT 0,
-            active_counters INTEGER NOT NULL DEFAULT 1
+            active_counters INTEGER NOT NULL DEFAULT 1,
+            owner_user_id TEXT
         )""")
         conn.execute("""CREATE TABLE IF NOT EXISTS services (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -99,9 +196,14 @@ def ensure_schema() -> None:
             FOREIGN KEY (business_id) REFERENCES businesses(id) ON DELETE CASCADE,
             FOREIGN KEY (service_id) REFERENCES services(id) ON DELETE CASCADE
         )""")
+        business_columns = {row[1] for row in conn.execute("PRAGMA table_info(businesses)").fetchall()}
+        if "owner_user_id" not in business_columns:
+            conn.execute("ALTER TABLE businesses ADD COLUMN owner_user_id TEXT")
         columns = {row[1] for row in conn.execute("PRAGMA table_info(queue_tickets)").fetchall()}
         if "customer_key" not in columns:
             conn.execute("ALTER TABLE queue_tickets ADD COLUMN customer_key TEXT")
+        if "merchant_response" not in columns:
+            conn.execute("ALTER TABLE queue_tickets ADD COLUMN merchant_response TEXT")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_tickets_business_status_created ON queue_tickets(business_id, status, created_at, id)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_tickets_customer_key ON queue_tickets(customer_key, created_at)")
         conn.execute("""CREATE TABLE IF NOT EXISTS users (
@@ -256,37 +358,55 @@ def auth_guest():
 
 @app.post("/api/auth/register")
 def auth_register():
-    """Create a real password-based customer account."""
+    """Register a customer or create a merchant account with its business profile."""
     data = request.get_json(silent=True) or {}
     name = str(data.get("name") or "").strip()[:100]
     email = str(data.get("email") or "").strip().lower()[:254]
     password = str(data.get("password") or "")
+    role = str(data.get("role") or "customer")
     if len(name) < 2:
         return jsonify({"error": "Please enter your full name."}), 400
     if "@" not in email or "." not in email.rsplit("@", 1)[-1]:
         return jsonify({"error": "Enter a valid email address."}), 400
     if len(password) < 8:
         return jsonify({"error": "Use a password with at least 8 characters."}), 400
-    if data.get("role", "customer") != "customer":
-        return jsonify({"error": "Merchant accounts must be authorized separately."}), 403
+    if role not in ("customer", "merchant"):
+        return jsonify({"error": "Choose a valid account type."}), 400
+    business_name = str(data.get("business_name") or "").strip()[:120]
+    city = str(data.get("city") or "").strip()[:80]
+    category = str(data.get("category") or "").strip()[:80]
+    services = [str(x).strip()[:100] for x in (data.get("services") or []) if str(x).strip()][:20]
+    if role == "merchant" and (len(business_name) < 2 or len(city) < 2 or not category or not services):
+        return jsonify({"error": "Enter your business name, city, category and at least one service."}), 400
     conn = get_db()
     try:
         cur = conn.execute(
-            "INSERT INTO users(name,email,password_hash,role,created_at) VALUES (?,?,?,?,?)",
-            (name, email, generate_password_hash(password), "customer", now_string()),
+            "INSERT INTO users(name,email,password_hash,role,created_at) VALUES (?,?,?,?,?)" + (" RETURNING id" if DATABASE_URL else ""),
+            (name, email, generate_password_hash(password), role, now_string()),
         )
+        user_id = cur.fetchone()["id"] if DATABASE_URL else cur.lastrowid
+        user_key = f"account-{user_id}"
+        if role == "merchant":
+            business_cur = conn.execute(
+                "INSERT INTO businesses(name,category,city,status,owner_user_id) VALUES (?,?,?,'open',?)" + (" RETURNING id" if DATABASE_URL else ""),
+                (business_name, category, city, user_key),
+            )
+            business_id = business_cur.fetchone()["id"] if DATABASE_URL else business_cur.lastrowid
+            conn.executemany(
+                "INSERT INTO services(business_id,name,current_estimated_duration) VALUES (?,?,15)",
+                [(business_id, item) for item in services],
+            )
         conn.commit()
-        user_id = cur.lastrowid
-    except sqlite3.IntegrityError:
-        conn.close()
+    except (sqlite3.IntegrityError, PostgresIntegrityError):
+        conn.rollback(); conn.close()
         return jsonify({"error": "An account with this email already exists. Please sign in."}), 409
     conn.close()
     session.clear()
     session.permanent = bool(data.get("remember", True))
-    session["customer_key"] = str(uuid.uuid4())
+    session["customer_key"] = user_key
     session["user"] = {
-        "id": f"account-{user_id}", "name": name, "email": email,
-        "picture": None, "provider": "password", "role": "customer"
+        "id": user_key, "name": name, "email": email,
+        "picture": None, "provider": "password", "role": role
     }
     return jsonify({"authenticated": True, "user": session["user"]}), 201
 
@@ -300,7 +420,7 @@ def auth_password_login():
     if requested_role not in ("customer", "merchant"):
         return jsonify({"error": "Invalid account type."}), 400
     conn = get_db()
-    row = conn.execute("SELECT * FROM users WHERE email = ? COLLATE NOCASE", (email,)).fetchone()
+    row = conn.execute("SELECT * FROM users WHERE LOWER(email) = LOWER(?)", (email,)).fetchone()
     conn.close()
     if not row or not check_password_hash(row["password_hash"], password):
         return jsonify({"error": "The email or password is incorrect."}), 401
@@ -308,7 +428,7 @@ def auth_password_login():
         return jsonify({"error": "This account is not authorized for the selected workspace. Merchants must be authorized by the CityPulse administrator."}), 403
     session.clear()
     session.permanent = bool(data.get("remember", True))
-    session["customer_key"] = str(uuid.uuid4())
+    session["customer_key"] = f"account-{row['id']}"
     session["user"] = {
         "id": f"account-{row['id']}", "name": row["name"],
         "email": row["email"], "picture": None, "provider": "password",
@@ -353,7 +473,7 @@ def auth_forgot_password():
     if not (SMTP_HOST and SMTP_FROM):
         return jsonify({"error": "Password reset email is not configured yet. Configure SMTP_HOST, SMTP_FROM, SMTP_PORT, SMTP_USERNAME and SMTP_PASSWORD in .env."}), 503
     conn = get_db()
-    row = conn.execute("SELECT id FROM users WHERE email = ? COLLATE NOCASE", (email,)).fetchone()
+    row = conn.execute("SELECT id FROM users WHERE LOWER(email) = LOWER(?)", (email,)).fetchone()
     if row:
         token = secrets.token_urlsafe(32)
         token_hash = hashlib.sha256(token.encode("utf-8")).hexdigest()
@@ -388,7 +508,7 @@ def auth_reset_password():
     row = conn.execute("""
         SELECT rt.id AS reset_id, u.id AS user_id FROM password_reset_tokens rt
         JOIN users u ON u.id = rt.user_id
-        WHERE u.email = ? COLLATE NOCASE AND rt.token_hash = ?
+        WHERE LOWER(u.email) = LOWER(?) AND rt.token_hash = ?
           AND rt.used_at IS NULL AND rt.expires_at >= ?
         ORDER BY rt.id DESC LIMIT 1
     """, (email, token_hash, now)).fetchone()
@@ -424,7 +544,7 @@ def auth_google():
             return jsonify({"error": "Google sign-in verification failed for this application."}), 401
         session.clear()
         session.permanent = bool(data.get("remember", True))
-        session["customer_key"] = str(uuid.uuid4())
+        session["customer_key"] = f"google:{profile['sub']}"
         session["user"] = {
             "id": profile["sub"],
             "name": profile.get("name") or profile.get("email", "CityPulse User").split("@")[0],
@@ -455,6 +575,12 @@ def auth_role():
         elif provider == "google":
             if (existing_user.get("email") or "").lower() not in MERCHANT_EMAILS:
                 return jsonify({"error": "This Google account is not enabled for merchant access yet."}), 403
+        elif provider == "password":
+            conn = get_db()
+            row = conn.execute("SELECT role FROM users WHERE id = ?", (str(existing_user.get("id", "")).removeprefix("account-"),)).fetchone()
+            conn.close()
+            if not row or row["role"] != "merchant":
+                return jsonify({"error": "This account is not registered as a merchant."}), 403
         else:
             return jsonify({"error": "This account is not authorized for merchant access."}), 403
     user = dict(session["user"])
@@ -487,6 +613,7 @@ def api_get_businesses():
     results = []
     for row in rows:
         item = dict(row)
+        item.pop("owner_user_id", None)
         item["current_queue"] = conn.execute(
             "SELECT COUNT(*) FROM queue_tickets WHERE business_id = ? AND status IN ('waiting','in_service')", (row["id"],)
         ).fetchone()[0]
@@ -498,13 +625,62 @@ def api_get_businesses():
     return jsonify(results), 200
 
 
+@app.get("/api/my-business")
+@require_merchant
+def my_business():
+    user = current_user() or {}
+    conn = get_db()
+    if str(user.get("provider")) == "demo":
+        row = business_exists(conn, 1)
+    else:
+        row = conn.execute("SELECT * FROM businesses WHERE owner_user_id = ?", (str(user.get("id")),)).fetchone()
+    if not row:
+        conn.close()
+        return jsonify({"business": None, "services": []}), 200
+    services = conn.execute("SELECT id,name,current_estimated_duration FROM services WHERE business_id = ? ORDER BY id", (row["id"],)).fetchall()
+    business_data = dict(row)
+    business_data.pop("owner_user_id", None)
+    result = {"business": business_data, "services": [dict(item) for item in services]}
+    conn.close()
+    return jsonify(result), 200
+
+
+@app.post("/api/my-business")
+@require_merchant
+def create_my_business():
+    data = request.get_json(silent=True) or {}
+    name = str(data.get("name") or "").strip()[:120]
+    city = str(data.get("city") or "").strip()[:80]
+    category = str(data.get("category") or "").strip()[:80]
+    services = [str(x).strip()[:100] for x in (data.get("services") or []) if str(x).strip()][:20]
+    if len(name) < 2 or len(city) < 2 or not category or not services:
+        return jsonify({"error": "Enter a business name, city, category and at least one service."}), 400
+    user = current_user() or {}
+    if user.get("provider") == "demo":
+        return jsonify({"error": "Demo merchants use the sample business. Create a merchant account to register a separate business."}), 403
+    conn = get_db()
+    existing = conn.execute("SELECT id FROM businesses WHERE owner_user_id = ?", (str(user.get("id")),)).fetchone()
+    if existing:
+        conn.close(); return jsonify({"error": "A business is already registered to this account."}), 409
+    cur = conn.execute("INSERT INTO businesses(name,category,city,status,owner_user_id) VALUES (?,?,?,'open',?)" + (" RETURNING id" if DATABASE_URL else ""), (name,category,city,str(user.get("id"))))
+    business_id = cur.fetchone()["id"] if DATABASE_URL else cur.lastrowid
+    conn.executemany("INSERT INTO services(business_id,name,current_estimated_duration) VALUES (?,?,15)", [(business_id, item) for item in services])
+    conn.commit(); conn.close()
+    return jsonify({"message": "Your business profile is ready.", "business_id": business_id}), 201
+
+
 @app.get("/api/businesses/<int:business_id>/queue")
 @require_merchant
 def get_merchant_queue(business_id):
     conn = get_db()
-    if not business_exists(conn, business_id):
+    biz = business_exists(conn, business_id)
+    if not biz:
         conn.close()
         return jsonify({"error": "Business not found."}), 404
+    user = current_user() or {}
+    if user.get("provider") != "demo" and biz["owner_user_id"] != str(user.get("id")):
+        conn.close()
+        return jsonify({"error": "You can only manage your own business."}), 403
     active = conn.execute("""
         SELECT q.*, s.name AS service_name, s.current_estimated_duration
         FROM queue_tickets q JOIN services s ON q.service_id = s.id
@@ -525,8 +701,8 @@ def get_merchant_queue(business_id):
     """, (business_id,)).fetchall()
     completed_today = conn.execute("""
         SELECT COUNT(*) FROM queue_tickets WHERE business_id = ? AND status = 'completed'
-        AND date(completed_at) = date('now')
-    """, (business_id,)).fetchone()[0]
+        AND {completed_date_filter}
+    """.format(completed_date_filter="completed_at::date = CURRENT_DATE" if DATABASE_URL else "date(completed_at) = date('now')"), (business_id,)).fetchone()[0]
     biz = business_exists(conn, business_id)
     count = refresh_business_count(conn, business_id)
     conn.commit()
@@ -558,13 +734,16 @@ def add_walkin():
     if not biz or not service:
         conn.close()
         return jsonify({"error": "Business or service was not found."}), 404
+    user = current_user() or {}
+    if user.get("provider") != "demo" and biz["owner_user_id"] != str(user.get("id")):
+        conn.close(); return jsonify({"error": "You can only manage your own business."}), 403
     queue_position = conn.execute("SELECT COUNT(*) FROM queue_tickets WHERE business_id = ? AND status IN ('waiting','in_service')", (b_id,)).fetchone()[0] + 1
     display_name = f"#{queue_position}" if use_queue_number or not name else name
     cursor = conn.execute("""
         INSERT INTO queue_tickets (business_id, service_id, customer_name, is_walkin, status, created_at)
         VALUES (?, ?, ?, 1, 'waiting', ?)
-    """, (b_id, s_id, display_name, now_string()))
-    ticket_id = cursor.lastrowid
+    """ + (" RETURNING id" if DATABASE_URL else ""), (b_id, s_id, display_name, now_string()))
+    ticket_id = cursor.fetchone()["id"] if DATABASE_URL else cursor.lastrowid
     refresh_business_count(conn, b_id)
     conn.commit()
     conn.close()
@@ -600,8 +779,8 @@ def book_appointment():
         INSERT INTO queue_tickets (business_id, service_id, customer_name, notes, is_walkin,
             status, ai_duration_modifier, created_at, customer_key)
         VALUES (?, ?, ?, ?, 0, 'pending_confirmation', ?, ?, ?)
-    """, (b_id, s_id, name, notes, ai_modifier, now_string(), ensure_customer_key()))
-    ticket_id = cursor.lastrowid
+    """ + (" RETURNING id" if DATABASE_URL else ""), (b_id, s_id, name, notes, ai_modifier, now_string(), ensure_customer_key()))
+    ticket_id = cursor.fetchone()["id"] if DATABASE_URL else cursor.lastrowid
     conn.commit()
     conn.close()
     return jsonify({
@@ -663,7 +842,12 @@ def decide_booking(ticket_id):
         conn.close()
         return jsonify({"error": "This booking request has already been handled."}), 409
     new_status = "waiting" if decision == "accept" else "declined"
-    conn.execute("UPDATE queue_tickets SET status = ? WHERE id = ? AND status = 'pending_confirmation'", (new_status, ticket_id))
+    response_text = str(data.get("merchant_response") or "").strip()[:500]
+    user = current_user() or {}
+    biz = business_exists(conn, ticket["business_id"])
+    if user.get("provider") != "demo" and (not biz or biz["owner_user_id"] != str(user.get("id"))):
+        conn.close(); return jsonify({"error": "You can only respond to bookings for your own business."}), 403
+    conn.execute("UPDATE queue_tickets SET status = ?, merchant_response = ? WHERE id = ? AND status = 'pending_confirmation'", (new_status, response_text, ticket_id))
     if decision == "accept":
         refresh_business_count(conn, ticket["business_id"])
     conn.commit()
@@ -683,6 +867,10 @@ def seat_customer(ticket_id):
     if not ticket:
         conn.close()
         return jsonify({"error": "Ticket not found."}), 404
+    user = current_user() or {}
+    biz = business_exists(conn, ticket["business_id"])
+    if user.get("provider") != "demo" and (not biz or biz["owner_user_id"] != str(user.get("id"))):
+        conn.close(); return jsonify({"error": "You can only manage bookings for your own business."}), 403
     now = now_string()
     cursor = conn.execute("UPDATE queue_tickets SET status = 'in_service', started_at = ? WHERE id = ? AND status = 'waiting'", (now, ticket_id))
     if cursor.rowcount == 0:
@@ -702,6 +890,10 @@ def complete_service(ticket_id):
     if not ticket:
         conn.close()
         return jsonify({"error": "Ticket not found."}), 404
+    user = current_user() or {}
+    biz = business_exists(conn, ticket["business_id"])
+    if user.get("provider") != "demo" and (not biz or biz["owner_user_id"] != str(user.get("id"))):
+        conn.close(); return jsonify({"error": "You can only manage bookings for your own business."}), 403
     if ticket["status"] != "in_service":
         conn.close()
         return jsonify({"error": "Only a customer currently in service can be completed."}), 409
@@ -728,6 +920,12 @@ def set_business_status(business_id):
     if status not in ("open", "busy", "closed"):
         return jsonify({"error": "Choose open, busy, or closed."}), 400
     conn = get_db()
+    user = current_user() or {}
+    biz = business_exists(conn, business_id)
+    if not biz:
+        conn.close(); return jsonify({"error": "Business not found."}), 404
+    if user.get("provider") != "demo" and biz["owner_user_id"] != str(user.get("id")):
+        conn.close(); return jsonify({"error": "You can only update your own business."}), 403
     cursor = conn.execute("UPDATE businesses SET status = ? WHERE id = ?", (status, business_id))
     conn.commit()
     conn.close()

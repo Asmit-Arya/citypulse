@@ -1,6 +1,62 @@
 
 /* CityPulse queue API bridge. Existing Flask endpoints are preserved. */
-const CURRENT_BUSINESS_ID = 1;
+let CURRENT_BUSINESS_ID = null;
+let CURRENT_BUSINESS_OWNER = null;
+
+async function loadMerchantBusiness() {
+    const owner = String(window.cityPulseCurrentUser?.id || "");
+    const response = await fetch("/api/my-business", { headers: { "Accept": "application/json" } });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.error || "Could not load your business.");
+    CURRENT_BUSINESS_OWNER = owner;
+    if (!data.business) {
+        CURRENT_BUSINESS_ID = null;
+        const panel = document.getElementById("merchantOnboardingPanel");
+        if (panel) panel.hidden = false;
+        return null;
+    }
+    CURRENT_BUSINESS_ID = Number(data.business.id);
+    const panel = document.getElementById("merchantOnboardingPanel");
+    if (panel) panel.hidden = true;
+    const heading = document.getElementById("merchantBusinessHeading");
+    if (heading) heading.textContent = data.business.name;
+    const serviceSelect = document.getElementById("walkInServiceSelect");
+    if (serviceSelect) {
+        serviceSelect.innerHTML = data.services.map(service => `<option value="${Number(service.id)}">${escapeQueueText(service.name)} (~${Number(service.current_estimated_duration) || 15}m)</option>`).join("");
+    }
+    return data.business;
+}
+
+async function refreshCustomerBookings() {
+    if (window.cityPulseRole !== "customer") return;
+    const container = document.getElementById("customerBookingsList");
+    if (!container) return;
+    try {
+        const response = await fetch("/api/my-bookings", { headers: { "Accept": "application/json" } });
+        const bookings = await response.json().catch(() => []);
+        if (!response.ok) throw new Error("Could not load bookings.");
+        if (!bookings.length) {
+            container.innerHTML = '<div class="empty-state">No bookings yet. Choose a local business above to get started.</div>';
+            return;
+        }
+        const steps = ["pending_confirmation", "waiting", "in_service", "completed"];
+        const labels = ["Request sent", "Merchant confirmed", "Service in progress", "Completed"];
+        container.innerHTML = bookings.map(ticket => {
+            const index = steps.indexOf(ticket.status);
+            const declined = ticket.status === "declined";
+            const activeIndex = declined ? 0 : Math.max(0,index);
+            const progress = labels.map((label,i) => `<div class="booking-step ${!declined && i <= activeIndex ? "done" : ""}">${label}</div>`).join("");
+            const responseNote = ticket.merchant_response ? `<div class="booking-response"><strong>Merchant response:</strong> ${escapeQueueText(ticket.merchant_response)}</div>` : (ticket.status === "waiting" ? '<div class="booking-response">The merchant accepted your request. You are in the queue.</div>' : "");
+            return `<article class="booking-status-card ${declined ? "booking-declined" : ""}">
+              <div class="booking-status-top"><div><div class="booking-status-title">${escapeQueueText(ticket.business_name)} · ${escapeQueueText(ticket.service_name)}</div><div class="booking-status-meta">Booking #${Number(ticket.id)} · ${escapeQueueText(ticket.business_city || "")} · ${escapeQueueText(ticket.created_at || "")}</div></div><span class="badge ${declined ? "badge-status-closed" : ticket.status === "completed" ? "badge-status-open" : "badge-status-busy"}">${escapeQueueText(ticket.status_label || ticket.status)}</span></div>
+              ${declined ? '<div class="booking-response">This request was declined by the merchant. You can choose another time or business.</div>' : `<div class="booking-progress">${progress}</div>`}
+              ${responseNote}
+              ${ticket.queue_position ? `<div class="booking-status-meta mt-2">Queue position: <strong>#${Number(ticket.queue_position)}</strong> · Estimated wait: ${escapeQueueText(ticket.estimated_wait || "Updating")}</div>` : ""}
+            </article>`;
+        }).join("");
+    } catch (error) { console.warn("Booking status refresh failed", error); }
+}
+window.refreshCustomerBookings = refreshCustomerBookings;
 
 async function fetchQueueState(businessId) {
     try {
@@ -94,6 +150,11 @@ async function refreshMerchantConsole() {
     // Avoid merchant requests while the customer workspace is active.
     if (window.cityPulseRole !== "merchant") return;
 
+    const signedInOwner = String(window.cityPulseCurrentUser?.id || "");
+    if (!CURRENT_BUSINESS_ID || CURRENT_BUSINESS_OWNER !== signedInOwner) {
+        try { await loadMerchantBusiness(); } catch (error) { console.error(error); }
+        if (!CURRENT_BUSINESS_ID) return;
+    }
     const data = await fetchQueueState(CURRENT_BUSINESS_ID);
     if (!data) return;
 
@@ -160,6 +221,8 @@ async function refreshMerchantConsole() {
     const pending = Array.isArray(data.pending_bookings) ? data.pending_bookings : [];
 
     if (queueList) {
+        const responseDrafts = new Map();
+        queueList.querySelectorAll("[data-merchant-response]").forEach(field => responseDrafts.set(field.dataset.merchantResponse, field.value));
         queueList.innerHTML = "";
 
         if (pending.length) {
@@ -176,12 +239,15 @@ async function refreshMerchantConsole() {
                     <strong>${escapeQueueText(ticket.customer_name || "Customer")}</strong>
                     <div class="small mt-1">${escapeQueueText(ticket.service_name || "Service")}</div>
                     <div class="small mt-1">New booking · awaiting your decision</div>
+                    <input class="form-control cp-input mt-2" data-merchant-response="${Number(ticket.id)}" placeholder="Optional response to customer" maxlength="500" aria-label="Response to customer">
                   </div>
                   <div class="queue-ticket-actions">
                     <button type="button" class="btn btn-sm btn-success" data-decision="accept" data-ticket-id="${Number(ticket.id)}">Accept</button>
                     <button type="button" class="btn btn-sm btn-outline-danger" data-decision="decline" data-ticket-id="${Number(ticket.id)}">Decline</button>
                   </div>`;
                 queueList.appendChild(item);
+                const responseField = item.querySelector("[data-merchant-response]");
+                if (responseField && responseDrafts.has(String(ticket.id))) responseField.value = responseDrafts.get(String(ticket.id));
             });
         }
 
@@ -217,22 +283,23 @@ async function refreshMerchantConsole() {
 
         // Use delegated listeners on the newly rendered buttons.
         queueList.querySelectorAll("[data-decision]").forEach((button) => {
-            button.addEventListener("click", () => decideBooking(
-                Number(button.dataset.ticketId), button.dataset.decision, button
-            ));
+            button.addEventListener("click", () => {
+                const responseField = queueList.querySelector(`[data-merchant-response="${button.dataset.ticketId}"]`);
+                decideBooking(Number(button.dataset.ticketId), button.dataset.decision, button, responseField?.value || "");
+            });
         });
         queueList.querySelectorAll("[data-seat-ticket]").forEach((button) => {
             button.addEventListener("click", () => window.handleSeatNextClick(Number(button.dataset.seatTicket)));
         });
     }
 
-    async function decideBooking(ticketId, decision, button) {
+    async function decideBooking(ticketId, decision, button, merchantResponse = "") {
         button.disabled = true;
         try {
             const response = await fetch(`/api/queue/${ticketId}/decision`, {
                 method: "PUT",
                 headers: { "Content-Type": "application/json", "Accept": "application/json" },
-                body: JSON.stringify({ decision })
+                body: JSON.stringify({ decision, merchant_response: merchantResponse })
             });
             const result = await response.json().catch(() => ({}));
             if (!response.ok) throw new Error(result.error || "Could not update booking.");
@@ -253,6 +320,7 @@ async function refreshMerchantConsole() {
 }
 
 window.refreshMerchantConsole = refreshMerchantConsole;
+window.resetMerchantBusinessContext = function() { CURRENT_BUSINESS_ID = null; CURRENT_BUSINESS_OWNER = null; };
 
 window.handleSeatNextClick = async function(ticketId) {
     try {
@@ -282,6 +350,21 @@ window.handleCompleteServiceClick = async function(ticketId) {
 
 // Background queue refresh; no full-page reload.
 document.addEventListener("DOMContentLoaded", () => {
+    const onboardingForm = document.getElementById("merchantOnboardingForm");
+    onboardingForm?.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const errorEl = document.getElementById("merchantOnboardingError");
+        errorEl.hidden = true;
+        const services = document.getElementById("onboardServices").value.split(",").map(value => value.trim()).filter(Boolean);
+        try {
+            const response = await fetch("/api/my-business", { method: "POST", headers: { "Content-Type": "application/json", "Accept": "application/json" }, body: JSON.stringify({ name: document.getElementById("onboardBusinessName").value, city: document.getElementById("onboardCity").value, category: document.getElementById("onboardCategory").value, services }) });
+            const result = await response.json().catch(() => ({}));
+            if (!response.ok) throw new Error(result.error || "Could not save business.");
+            onboardingForm.reset(); CURRENT_BUSINESS_ID = null; await loadMerchantBusiness(); await refreshMerchantConsole();
+            if (typeof window.toast === "function") window.toast(result.message || "Business profile saved.");
+        } catch (error) { errorEl.textContent = error.message; errorEl.hidden = false; }
+    });
+
     const walkInForm = document.getElementById("walkInForm");
 
     if (walkInForm) {
@@ -330,9 +413,9 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
+    refreshCustomerBookings();
     window.setInterval(() => {
-        if (window.cityPulseRole === "merchant") {
-            refreshMerchantConsole();
-        }
-    }, 10000);
+        if (window.cityPulseRole === "merchant") refreshMerchantConsole();
+        if (window.cityPulseRole === "customer") refreshCustomerBookings();
+    }, 5000);
 });

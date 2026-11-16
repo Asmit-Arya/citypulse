@@ -34,13 +34,11 @@ from pathlib import Path
 DB_PATH = Path(os.getenv("CITYPULSE_DB_PATH", str(Path(__file__).resolve().with_name("citypulse.db"))))
 
 def get_db_connection():
-    """
-    Establishes a connection to the local SQLite database file.
-    
-    Setting row_factory = sqlite3.Row configures SQLite to return rows as
-    dictionary-like objects, allowing column access by field name (e.g., row['name'])
-    instead of arbitrary zero-based numeric indices.
-    """
+    """Use the same configured SQLite/PostgreSQL backend as the Flask app."""
+    database_url = os.getenv("DATABASE_URL", "").strip()
+    if database_url:
+        from db import get_postgres_connection
+        return get_postgres_connection(database_url)
     conn = sqlite3.connect(str(DB_PATH), timeout=8)
     conn.row_factory = sqlite3.Row
     return conn

@@ -40,6 +40,10 @@ window.toast = toast;
 
 function chooseRole(role) {
     selectedRole = role === "merchant" ? "merchant" : "customer";
+    const merchantFields = $("merchantRegisterFields");
+    if (merchantFields) merchantFields.hidden = selectedRole !== "merchant";
+    const signupTitle = $("signupModal")?.querySelector(".modal-title");
+    if (signupTitle) signupTitle.textContent = selectedRole === "merchant" ? "Create merchant account" : "Create your account";
     document.querySelectorAll(".role-btn").forEach((button) => {
         const active = button.dataset.role === selectedRole;
         button.classList.toggle("active", active);
@@ -94,6 +98,9 @@ function renderWorkspace(viewName) {
     if (view === "merchant" && typeof window.refreshMerchantConsole === "function") {
         window.refreshMerchantConsole();
     }
+    if (view === "customer" && typeof window.refreshCustomerBookings === "function") {
+        window.refreshCustomerBookings();
+    }
 }
 
 // Keep the browser workspace and Flask session in sync. The API remains the
@@ -146,6 +153,7 @@ async function logout() {
     }
     currentUser = null;
     window.cityPulseCurrentUser = null;
+    window.resetMerchantBusinessContext?.();
     window.cityPulseRole = null;
     closeUserMenu();
     if ($("loginForm")) $("loginForm").reset();
@@ -306,7 +314,8 @@ function renderCustomerCards(businesses) {
         bookButton.addEventListener("click", () => {
             openCustomerBookingModal(
                 Number(business.id) || 0,
-                business.name || "Local business"
+                business.name || "Local business",
+                business.services || []
             );
         });
     });
@@ -359,7 +368,7 @@ function handleFilterChange() {
     renderCustomerCards(filtered);
 }
 
-function openCustomerBookingModal(businessId, businessName) {
+function openCustomerBookingModal(businessId, businessName, services = []) {
     if (!(window.bootstrap && bootstrap.Modal)) {
         toast("Booking dialog could not open. Please reload the page.");
         return;
@@ -368,6 +377,10 @@ function openCustomerBookingModal(businessId, businessName) {
     $("modalBusinessId").value = String(businessId);
     $("customerBookingModalTitle").textContent = `Book at ${businessName}`;
     $("onlineCustomerName").value = currentUser?.name || "";
+    const serviceSelect = $("onlineServiceSelect");
+    if (serviceSelect && services.length) {
+        serviceSelect.innerHTML = services.map(service => `<option value="${Number(service.id)}">${safeText(service.name)} (~${Number(service.current_estimated_duration) || 15}m)</option>`).join("");
+    }
 
     const modalEl = $("customerBookingModal");
     bootstrap.Modal.getOrCreateInstance(modalEl).show();
@@ -406,14 +419,21 @@ async function handleRegisterSubmit(event) {
         error.textContent = "The passwords do not match."; error.hidden = false; return;
     }
     try {
-        const result = await postJSON("/api/auth/register", {
+        const payload = {
             name, email, password,
-            remember: Boolean($("rememberMe")?.checked), role: "customer"
-        });
+            remember: Boolean($("rememberMe")?.checked), role: selectedRole
+        };
+        if (selectedRole === "merchant") {
+            payload.business_name = ($("registerBusinessName")?.value || "").trim();
+            payload.city = ($("registerCity")?.value || "").trim();
+            payload.category = $("registerCategory")?.value || "";
+            payload.services = ($("registerServices")?.value || "").split(",").map(value => value.trim()).filter(Boolean);
+        }
+        const result = await postJSON("/api/auth/register", payload);
         bootstrap.Modal.getOrCreateInstance($("signupModal")).hide();
         $("registerForm").reset();
         showApp(result.user);
-        toast("Your CityPulse account has been created.");
+        toast(selectedRole === "merchant" ? "Your merchant account and business profile are ready." : "Your CityPulse account has been created.");
     } catch (err) {
         error.textContent = err.message; error.hidden = false;
     }
@@ -492,6 +512,7 @@ async function submitBooking(event) {
 
         $("onlineBookingForm").reset();
         toast(result.message || "Your booking was created.");
+        if (typeof window.refreshCustomerBookings === "function") await window.refreshCustomerBookings();
         await loadBusinesses();
     } catch (error) {
         toast(error.message || "Booking failed. Please try again.");
@@ -532,6 +553,7 @@ document.addEventListener("DOMContentLoaded", () => {
     $("loginForm")?.addEventListener("submit", handleLoginSubmit);
     $("demoSignInBtn")?.addEventListener("click", loginAsDemo);
     $("registerForm")?.addEventListener("submit", handleRegisterSubmit);
+    $("refreshCustomerBookingsBtn")?.addEventListener("click", () => window.refreshCustomerBookings?.());
     $("forgotPasswordForm")?.addEventListener("submit", handleForgotPasswordSubmit);
     $("resetPasswordForm")?.addEventListener("submit", handleResetPasswordSubmit);
 
@@ -541,12 +563,16 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     $("signUpBtn")?.addEventListener("click", () => {
-        if (selectedRole === "merchant") {
-            toast("Merchant access must be assigned by the administrator. Create a customer account or use an authorized merchant login.");
-            return;
-        }
+        chooseRole(selectedRole);
+        const title = $("signupModal")?.querySelector(".modal-title");
+        if (title) title.textContent = selectedRole === "merchant" ? "Create merchant account" : "Create your account";
+        $("registerError").hidden = true;
         bootstrap.Modal.getOrCreateInstance($("signupModal")).show();
     });
+    document.querySelectorAll(".role-btn").forEach(button => button.addEventListener("click", () => {
+        const fields = $("merchantRegisterFields");
+        if (fields) fields.hidden = button.dataset.role !== "merchant";
+    }));
 
     $("togglePasswordBtn")?.addEventListener("click", () => {
         const field = $("loginPassword");

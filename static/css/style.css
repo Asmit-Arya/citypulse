@@ -790,3 +790,51 @@ html { scroll-behavior: smooth; }
   .queue-ticket-actions { flex-direction: column; }
   .queue-ticket-actions .btn { width: 100%; }
 }
+
+/* CityPulse workspace atmosphere: layered midnight-blue surfaces matching landing/auth pages. */
+.app-shell {
+  background:
+    radial-gradient(ellipse at 8% 12%, rgba(66, 105, 190, .18), transparent 34%),
+    radial-gradient(ellipse at 92% 34%, rgba(93, 73, 191, .14), transparent 31%),
+    linear-gradient(145deg, #080e1a 0%, #0b1424 48%, #080e1a 100%);
+  position: relative;
+  isolation: isolate;
+}
+.app-shell::before {
+  content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
+  opacity: .22;
+  background-image: radial-gradient(rgba(144, 173, 226, .26) .7px, transparent .7px);
+  background-size: 27px 27px;
+  mask-image: linear-gradient(180deg, #000, transparent 88%);
+}
+.customer-bookings-panel, .merchant-panel, .summary-card {
+  backdrop-filter: blur(12px);
+}
+.customer-bookings-panel {
+  padding: 23px; border: 1px solid rgba(154,181,225,.16); border-radius: 19px;
+  background: linear-gradient(145deg, rgba(17,29,48,.92), rgba(10,20,35,.9));
+  box-shadow: 0 18px 45px rgba(0,0,0,.16);
+}
+.panel-subtitle { color: #9fb2cd; font-size: .88rem; margin: 5px 0 0; }
+.booking-status-card {
+  padding: 17px; margin-top: 12px; border: 1px solid rgba(132,159,211,.17);
+  border-radius: 14px; background: rgba(8,18,32,.7);
+}
+.booking-status-top { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; }
+.booking-status-title { color:#f3f6ff; font-weight:750; }
+.booking-status-meta { color:#9fb2cd; font-size:.82rem; margin-top:4px; }
+.booking-progress { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:7px; margin-top:17px; }
+.booking-step { position:relative; padding-top:18px; color:#71839e; font-size:.7rem; line-height:1.35; }
+.booking-step::before { content:""; position:absolute; top:0; left:0; width:100%; height:4px; border-radius:9px; background:rgba(126,148,184,.2); }
+.booking-step.done { color:#bcd2f4; }
+.booking-step.done::before { background:linear-gradient(90deg,#4c8df4,#8065f4); }
+.booking-response { margin-top:13px; padding:10px 12px; border-radius:10px; color:#cbd8f0; background:rgba(78,105,180,.13); font-size:.82rem; }
+.booking-response strong { color:#9dbdff; }
+.booking-declined { border-color:rgba(247,90,109,.28); }
+.merchant-register-fields { margin-top:8px; padding-top:6px; border-top:1px solid rgba(145,174,224,.14); }
+@media (max-width:600px) {
+ .customer-bookings-panel { padding:16px; }
+ .booking-progress { gap:4px; }
+ .booking-step { font-size:.62rem; }
+ .booking-status-top { flex-direction:column; }
+}

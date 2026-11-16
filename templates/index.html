@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -93,6 +92,14 @@
           <p id="loginError" class="login-error" role="alert" hidden></p>
           <button type="submit" class="btn btn-gradient auth-submit">Sign In <span aria-hidden="true">→</span></button>
           <p class="signup-line">New to CityPulse? <button type="button" id="signUpBtn" class="text-link">Create an account</button></p>
+
+          <!-- New: customer city selection -->
+          <div id="customerCityField" class="mt-3">
+            <label class="field-label" for="customerCityInput">Your city</label>
+            <input type="text" id="customerCityInput" class="form-control cp-input" placeholder="Enter your city (e.g. Raipur)" autocomplete="address-level2" maxlength="80">
+            <small class="demo-note d-block mt-2">Choose your city to see businesses and services available there.</small>
+          </div>
+
           <button type="button" id="demoSignInBtn" class="demo-signin-btn">Continue as demo</button>
           <p class="demo-note">Demo access is for local testing. Use an account or Google sign-in for normal access.</p>
         </form>
@@ -110,16 +117,30 @@
 
     <main class="container app-content my-4">
       <section id="viewCustomer" class="workspace-view" hidden>
-        <div class="customer-welcome"><div><p class="eyebrow">YOUR NEIGHBOURHOOD, SIMPLIFIED</p><h1 id="customerGreeting">Find your next stop.</h1><p>Explore local services, check the queue, and book your spot.</p></div><div class="city-chip">⌖ <span>Raipur</span></div></div>
+        <div class="customer-welcome"><div><p class="eyebrow">YOUR NEIGHBOURHOOD, SIMPLIFIED</p><h1 id="customerGreeting">Find your next stop.</h1><p>Explore local services, check the queue, and book your spot.</p></div><div class="city-chip">⌖ <span id="customerCityChipLabel">Your city</span></div></div>
         <div class="filter-panel"><div class="search-box"><span>⌕</span><input type="search" id="searchInput" placeholder="Search local businesses..."></div><select id="cityFilter" aria-label="Filter by city"><option value="">All cities</option><option value="Raipur">Raipur</option><option value="Bhilai">Bhilai</option></select><select id="categoryFilter" aria-label="Filter by category"><option value="">All categories</option><option value="Salon">Salon & Personal Care</option><option value="Healthcare">Healthcare & Clinics</option><option value="Automotive">Automotive & Repair</option><option value="Food & Beverages">Food & Beverages</option><option value="Retail">Retail</option></select></div>
         <div class="section-title-row"><div><p class="eyebrow">AVAILABLE NEAR YOU</p><h2>Explore Services</h2></div><span id="businessCount" class="result-count"></span></div>
         <div class="row g-3" id="businessCardsGrid"><div class="col-12"><div class="empty-state">Loading local services…</div></div></div>
+        <section class="customer-bookings-panel mt-4" aria-labelledby="customerBookingsHeading">
+          <div class="panel-title"><div><p class="eyebrow">YOUR ACTIVITY</p><h2 id="customerBookingsHeading">My Booking Status</h2><p class="panel-subtitle">Track merchant confirmation, queue progress and completed bookings.</p></div><button type="button" class="btn btn-cp-outline btn-sm" id="refreshCustomerBookingsBtn">Refresh</button></div>
+          <div id="customerBookingsList" aria-live="polite"><div class="empty-state">Your bookings will appear here.</div></div>
+        </section>
       </section>
 
       <section id="viewMerchant" class="workspace-view" hidden>
         <div class="merchant-welcome"><div><p class="eyebrow">MERCHANT WORKSPACE</p><h1>Today's queue, at a glance.</h1><p>Manage your line and keep service moving.</p></div><span class="live-indicator"><i></i> Live queue</span></div>
+        <section id="merchantOnboardingPanel" class="merchant-panel mb-4" hidden>
+          <div class="panel-title"><div><p class="eyebrow">BUSINESS SETUP</p><h2>Complete your merchant profile</h2><p class="panel-subtitle">Add your business details to start managing bookings and your queue.</p></div></div>
+          <form id="merchantOnboardingForm" class="row g-3">
+            <div class="col-md-6"><label class="field-label" for="onboardBusinessName">Business name</label><input id="onboardBusinessName" class="form-control cp-input" maxlength="120" required></div>
+            <div class="col-md-6"><label class="field-label" for="onboardCity">City</label><input id="onboardCity" class="form-control cp-input" maxlength="80" required></div>
+            <div class="col-md-6"><label class="field-label" for="onboardCategory">Category</label><select id="onboardCategory" class="form-select cp-select" required><option value="">Choose category</option><option>Salon</option><option>Healthcare</option><option>Automotive</option><option>Food &amp; Beverages</option><option>Retail</option><option>Other</option></select></div>
+            <div class="col-md-6"><label class="field-label" for="onboardServices">Services (comma separated)</label><input id="onboardServices" class="form-control cp-input" placeholder="Haircut, Beard trim" required></div>
+            <div class="col-12"><p id="merchantOnboardingError" class="login-error" role="alert" hidden></p><button type="submit" class="btn btn-gradient">Save business profile</button></div>
+          </form>
+        </section>
         <div class="merchant-summary-grid"><article class="summary-card"><small>WAITING IN LINE</small><strong id="merchantQueueCount">—</strong><span>Customers in queue</span></article><article class="summary-card"><small>CURRENT SERVICE</small><strong id="merchantActiveName">—</strong><span>Customer being served</span></article><article class="summary-card"><small>ESTIMATED WAIT</small><strong id="merchantWaitStat">—</strong><span>Based on current queue</span></article></div>
-        <div class="row g-4"><div class="col-lg-5"><section class="merchant-panel"><div class="panel-title"><div><p class="eyebrow">IN SERVICE</p><h2>Current workstation</h2></div></div><div id="activeChairContainer"><div class="empty-state">Loading current service…</div></div></section>
+        <div class="row g-4"><div class="col-lg-5"><section class="merchant-panel"><div class="panel-title"><div><p class="eyebrow">IN SERVICE</p><h2 id="merchantBusinessHeading">Current workstation</h2></div></div><div id="activeChairContainer"><div class="empty-state">Loading current service…</div></div></section>
           <section class="merchant-panel mt-4"><div class="panel-title"><div><p class="eyebrow">WALK-IN</p><h2>Add a customer</h2></div></div><form id="walkInForm"><label class="field-label" for="walkInCustomerName">Customer name <span class="optional-label">(optional)</span></label><div class="walkin-name-row"><input type="text" id="walkInCustomerName" class="form-control cp-input" placeholder="Enter name (optional)" maxlength="80"><button type="button" id="walkInNumberBtn" class="queue-number-btn" aria-pressed="false">Use #n</button><input type="checkbox" id="walkInUseNumber" hidden></div><label class="field-label mt-3" for="walkInServiceSelect">Service</label><select id="walkInServiceSelect" class="form-select cp-select"><option value="1">Standard Haircut (~20m)</option><option value="2">Beard Trim & Lineup (~10m)</option><option value="3">Hair Color & Styling (~45m)</option></select><button type="submit" class="btn btn-gradient w-100 mt-3">+ Add to Queue</button></form></section></div>
           <div class="col-lg-7"><section class="merchant-panel"><div class="panel-title"><div><p class="eyebrow">UP NEXT</p><h2>Waiting queue</h2></div></div><div class="queue-list-container" id="merchantQueueList"><div class="empty-state">Loading queue…</div></div></section></div></div>
       </section>
@@ -135,6 +156,13 @@
         <label class="field-label" for="registerEmail">Email address</label><input class="form-control cp-input" id="registerEmail" type="email" maxlength="254" autocomplete="email" required>
         <label class="field-label" for="registerPassword">Password (at least 8 characters)</label><input class="form-control cp-input" id="registerPassword" type="password" minlength="8" autocomplete="new-password" required>
         <label class="field-label" for="registerPasswordConfirm">Confirm password</label><input class="form-control cp-input" id="registerPasswordConfirm" type="password" minlength="8" autocomplete="new-password" required>
+        <div id="merchantRegisterFields" class="merchant-register-fields" hidden>
+          <p class="panel-subtitle mb-2">Business details (required for merchant accounts)</p>
+          <label class="field-label" for="registerBusinessName">Business name</label><input class="form-control cp-input" id="registerBusinessName" maxlength="120" placeholder="e.g. City Style Salon">
+          <label class="field-label" for="registerCity">Business city</label><input class="form-control cp-input" id="registerCity" maxlength="80" placeholder="e.g. Raipur">
+          <label class="field-label" for="registerCategory">Business category</label><select class="form-select cp-select" id="registerCategory"><option value="">Choose category</option><option>Salon</option><option>Healthcare</option><option>Automotive</option><option>Food &amp; Beverages</option><option>Retail</option><option>Other</option></select>
+          <label class="field-label" for="registerServices">Services (comma separated)</label><input class="form-control cp-input" id="registerServices" placeholder="e.g. Haircut, Beard trim">
+        </div>
         <p class="login-error" id="registerError" role="alert" hidden></p>
       </div><div class="modal-footer border-0 pt-0"><button type="button" class="btn btn-cp-outline" data-bs-dismiss="modal">Cancel</button><button type="submit" class="btn btn-gradient">Create account</button></div></form>
     </div></div>
@@ -166,6 +194,7 @@
   <script src="https://accounts.google.com/gsi/client" async defer onload="window.initializeGoogleSignIn && window.initializeGoogleSignIn()"></script>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
   <script src="/static/js/ui.js"></script>
+  <script src="/static/js/customer-city.js"></script>
   <script src="/static/js/api.js"></script>
 </body>
 </html>

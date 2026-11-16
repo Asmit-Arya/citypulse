@@ -1,0 +1,56 @@
+CITYPULSE - NEXT STEPS AFTER EXTRACTING THIS ZIP
+
+IMPORTANT
+- This ZIP intentionally does not include .env, .venv, or citypulse.db.
+- Keep your existing .env file private. Never upload it to GitHub.
+- Local development uses SQLite if DATABASE_URL is blank. If DATABASE_URL is set, the app uses PostgreSQL.
+
+1. Extract this ZIP into a NEW folder, for example Desktop\CityPulse-Updated.
+2. Copy your existing .env file from your backed-up project folder into this new folder.
+   Do not copy the old .venv folder or citypulse.db.
+3. Open the new folder in VS Code.
+4. Open Terminal > New Terminal and run:
+     py -m venv .venv
+     .\.venv\Scripts\Activate.ps1
+     python -m pip install --upgrade pip
+     python -m pip install -r requirements.txt
+5. Check that .env contains DATABASE_URL= followed by your Neon connection string.
+   Keep the URL on one line, with no surrounding quotes unless Neon itself supplied them.
+6. Run:
+     python app.py
+7. Open http://127.0.0.1:5000 and test customer registration/login, merchant registration,
+   business listing, walk-in queue, appointment booking, merchant confirmation, seating,
+   and completing a service.
+8. Do not deploy until the local tests work.
+
+RENDER DEPLOYMENT (ONLY AFTER LOCAL TESTING)
+1. Open Render Dashboard > your existing citypulse web service > Environment.
+2. Add DATABASE_URL and paste the same Neon connection string as its value.
+3. Add/confirm SESSION_SECRET with a long random value.
+4. Set COOKIE_SECURE=true.
+5. Set ENABLE_DEMO_LOGIN=false before public launch (this disables guest/demo sign-in).
+6. Leave GOOGLE_CLIENT_ID and MERCHANT_EMAILS unchanged/blank if Google sign-in is not being configured.
+7. Save changes. Render may redeploy automatically.
+8. Check the latest deploy log. Then open the deployed URL and test /health and the app flows.
+
+GITHUB
+- Commit and push the updated source files only.
+- Confirm .env, .venv, and *.db are not included in the commit.
+- Never paste the Neon URL into source code, README, GitHub, screenshots, or chat.
+
+DATABASE
+- On first successful app startup, the app creates the PostgreSQL tables and seeds three demo businesses
+  only if the businesses table is empty.
+- This version does not copy the old SQLite database into Neon. The project discussion established
+  that production has no customer/merchant/booking records that need to be preserved.
+
+
+LATEST FRONTEND REPAIR CHECKLIST
+1. Sign in as a customer. Open the customer workspace and confirm the “My Booking Status” panel appears below the business cards.
+2. Create a customer booking. Confirm it appears in My Booking Status and refreshes when the status changes.
+3. Sign out. On the login screen choose Merchant, then choose Create an account. Confirm business name, city, category, and services fields appear.
+4. Register a merchant using a new email address and complete all business fields. Confirm the merchant workspace opens and shows the registered business name and queue.
+5. Sign out and sign back in with the merchant email and password, selecting Merchant. Confirm the merchant workspace loads.
+6. If testing an account that has no business profile, confirm the merchant business setup form appears and can be submitted.
+
+Do not share DATABASE_URL, SESSION_SECRET, or any passwords when reporting errors. The build checks cover syntax and package integrity; they do not substitute for testing against your own Neon database and Render deployment.

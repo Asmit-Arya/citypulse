@@ -1,8 +1,4 @@
-"""Initialize or migrate the CityPulse SQLite database.
-
-The application uses the same schema initialization at startup, so this script
-can safely be run repeatedly.
-"""
+"""Initialize the configured CityPulse database (SQLite locally or PostgreSQL when DATABASE_URL is set)."""
 from app import ensure_schema
 
 if __name__ == "__main__":
